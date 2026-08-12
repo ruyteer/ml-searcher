@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { CategoryCombobox } from "./category-combobox";
-import { bulkCreatePhrases, INITIAL_ACTION_STATE } from "./actions";
+import { bulkCreatePhrases } from "./actions";
+import { INITIAL_ACTION_STATE } from "./action-state";
 
 export interface BulkAddDialogProps {
   open: boolean;

@@ -13,15 +13,7 @@ import {
   type ProductSearchResult,
 } from "@/lib/data/presells";
 
-export interface ActionState {
-  error?: string;
-  fieldErrors?: Record<string, string[]>;
-  success?: boolean;
-  presellId?: string;
-  slug?: string;
-}
-
-export const initialActionState: ActionState = {};
+import type { ActionState } from "./action-state";
 
 // ------------------------------------------------------------------- schema
 

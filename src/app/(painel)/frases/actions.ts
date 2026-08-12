@@ -4,15 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { TAGS, bust } from "@/lib/cache";
 
-/// Estado devolvido por toda Server Action desta página — tanto as ligadas
-/// a <form action={...}> via useActionState quanto as chamadas imperativas
-/// (delete/duplicar/toggle) disparadas dentro de um startTransition.
-export interface ActionState {
-  success: boolean;
-  message?: string;
-}
-
-export const INITIAL_ACTION_STATE: ActionState = { success: false, message: undefined };
+import type { ActionState } from "./action-state";
 
 function firstIssueMessage(error: z.ZodError): string {
   return error.issues[0]?.message ?? "Dados inválidos.";
