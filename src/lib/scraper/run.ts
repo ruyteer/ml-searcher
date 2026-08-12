@@ -120,6 +120,8 @@ interface WatchOutcome {
   itemsSeen: number;
   productsNew: number;
   offersNew: number;
+  /// Produtos descartados por caírem fora da árvore de Beleza (MLB1246).
+  offNiche: number;
 }
 
 interface WatchContext {
@@ -136,17 +138,17 @@ async function processWatch(watch: Watch, ctx: WatchContext): Promise<WatchOutco
   const collected = await collectForWatch(watch, { signal: ctx.signal });
   const found = collected.products;
 
-  // Watch só com termo de busca não tem como ser coletada pelos destaques —
-  // não é falha, é uma limitação conhecida da API enquanto a busca estiver 403.
+  // Watch sem termo e sem categoria não tem por onde coletar. Não é falha da
+  // API: é configuração incompleta da watch.
   if (collected.skipped) {
     log.add(`Watch "${watch.label}": ${collected.note}.`);
-    return { itemsSeen: 0, productsNew: 0, offersNew: 0 };
+    return { itemsSeen: 0, productsNew: 0, offersNew: 0, offNiche: collected.offNiche };
   }
 
   log.add(
     `Watch "${watch.label}": ${collected.note} -> ${found.length} produto(s) para avaliar.`,
   );
-  if (found.length === 0) return { itemsSeen: 0, productsNew: 0, offersNew: 0 };
+  if (found.length === 0) return { itemsSeen: 0, productsNew: 0, offersNew: 0, offNiche: collected.offNiche };
 
   const mlIds = found.map((p) => p.mlId);
 
@@ -163,7 +165,7 @@ async function processWatch(watch: Watch, ctx: WatchContext): Promise<WatchOutco
     log.add(`Watch "${watch.label}": ${blocked.length} produto(s) bloqueado(s) ignorado(s).`);
   }
   if (actionable.length === 0) {
-    return { itemsSeen: found.length, productsNew: 0, offersNew: 0 };
+    return { itemsSeen: found.length, productsNew: 0, offersNew: 0, offNiche: collected.offNiche };
   }
 
   const productsNew = actionable.filter((p) => !existingByMlId.has(p.mlId)).length;
@@ -252,7 +254,7 @@ async function processWatch(watch: Watch, ctx: WatchContext): Promise<WatchOutco
 
   if (candidates.length === 0) {
     log.add(`Watch "${watch.label}": nenhuma oferta acima do limite de desconto.`);
-    return { itemsSeen: found.length, productsNew, offersNew: 0 };
+    return { itemsSeen: found.length, productsNew, offersNew: 0, offNiche: collected.offNiche };
   }
 
   // Deduplicação: mesma oferta (produto + preço) nas últimas 12h não repete.
@@ -280,7 +282,7 @@ async function processWatch(watch: Watch, ctx: WatchContext): Promise<WatchOutco
       ".",
   );
 
-  return { itemsSeen: found.length, productsNew, offersNew: fresh.length };
+  return { itemsSeen: found.length, productsNew, offersNew: fresh.length, offNiche: collected.offNiche };
 }
 
 // ------------------------------------------------------------------- runScrape
@@ -339,14 +341,17 @@ export async function runScrape(options: RunScrapeOptions = {}): Promise<RunScra
   });
 
   const log = new RunLog();
-  log.add(`Varredura iniciada (${trigger}) — ${watches.length} watch(es) habilitada(s).`);
+  log.add(`Varredura iniciada (${trigger}): ${watches.length} watch(es) habilitada(s).`);
   if (fixture) log.add("Modo FIXTURE ativo: dados de exemplo, sem chamadas reais ao Mercado Livre.");
   else {
     const mode = await getCollectionMode();
     log.add(
       mode === "search"
-        ? "Fonte preferida: busca do ML (será testada; se responder 403 caímos nos destaques por 24h)."
-        : "Fonte preferida: destaques de categoria — a busca do ML está bloqueada (403).",
+        ? "Fonte preferida: busca por termo no catálogo do ML. Watch sem termo usa os destaques da categoria."
+        : "Fonte preferida: destaques de categoria.",
+    );
+    log.add(
+      "Busca por termo: só entram produtos cuja categoria fica dentro de Beleza e Cuidado Pessoal (MLB1246).",
     );
   }
   log.add(
@@ -356,6 +361,9 @@ export async function runScrape(options: RunScrapeOptions = {}): Promise<RunScra
 
   const totals = { watchesDone: 0, itemsSeen: 0, productsNew: 0, offersNew: 0 };
   const failures: string[] = [];
+  /// Fora de `totals` porque o objeto vai direto para o update do ScrapeRun e
+  /// a tabela não tem coluna para isso.
+  let offNicheTotal = 0;
 
   /// Espelha o progresso no banco para o painel poder acompanhar ao vivo.
   const flush = async () => {
@@ -377,6 +385,7 @@ export async function runScrape(options: RunScrapeOptions = {}): Promise<RunScra
         totals.itemsSeen += outcome.itemsSeen;
         totals.productsNew += outcome.productsNew;
         totals.offersNew += outcome.offersNew;
+        offNicheTotal += outcome.offNiche;
         await prisma.watch.update({ where: { id: watch.id }, data: { lastRunAt: new Date() } });
       } catch (err) {
         // Uma watch quebrada não pode derrubar as outras.
@@ -400,6 +409,11 @@ export async function runScrape(options: RunScrapeOptions = {}): Promise<RunScra
       `Varredura concluída: ${totals.itemsSeen} item(ns) vistos, ${totals.productsNew} produto(s) novo(s), ` +
         `${totals.offersNew} oferta(s) nova(s).`,
     );
+    if (offNicheTotal > 0) {
+      log.add(
+        `${offNicheTotal} produto(s) descartado(s) por estarem fora de Beleza e Cuidado Pessoal (MLB1246).`,
+      );
+    }
     if (failures.length > 0) log.add(`${failures.length} watch(es) falharam.`);
 
     await prisma.scrapeRun.update({

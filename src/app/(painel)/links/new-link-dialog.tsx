@@ -4,10 +4,12 @@ import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { IconAdicionar } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { UrlInput } from "@/components/form/url-input";
 import {
   Select,
   SelectContent,
@@ -65,7 +67,7 @@ export function NewLinkDialog() {
       }}
     >
       <DialogTrigger render={<Button />}>
-        <Plus /> Novo link
+        <HugeiconsIcon icon={IconAdicionar} size={16} strokeWidth={1.8} aria-hidden="true" /> Novo link
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -76,19 +78,13 @@ export function NewLinkDialog() {
         </DialogHeader>
 
         <form action={formAction} className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="targetUrl">URL de destino</Label>
-            <Input
-              id="targetUrl"
-              name="targetUrl"
-              type="url"
-              placeholder="https://..."
-              required
-            />
-            {state.fieldErrors?.targetUrl && (
-              <p className="text-xs text-destructive">{state.fieldErrors.targetUrl[0]}</p>
-            )}
-          </div>
+          <UrlInput
+            label="URL de destino"
+            name="targetUrl"
+            placeholder="https://..."
+            required
+            error={state.fieldErrors?.targetUrl?.[0]}
+          />
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="kind">Tipo</Label>

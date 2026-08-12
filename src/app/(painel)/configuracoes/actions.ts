@@ -81,7 +81,7 @@ export async function testMlConnectionAction(
   clearTokenCache(); // força uma autenticação nova em vez de reaproveitar cache
   try {
     await getAccessToken();
-    return ok("Conexão autenticada com sucesso — as próximas varreduras usam a API real.");
+    return ok("Conexão autenticada com sucesso. As próximas varreduras usam a API real.");
   } catch (err) {
     if (isMLApiError(err)) {
       if (err.code === "NO_CREDENTIALS") {

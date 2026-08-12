@@ -2,7 +2,8 @@
 
 import { useQueryStates } from "nuqs";
 import { useTransition } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ArrowDown01Icon, ArrowUp01Icon, ArrowUpDownIcon } from "@hugeicons/core-free-icons";
 import { TableHead } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { productsParsers } from "./params";
@@ -35,12 +36,12 @@ export function SortHeader({ sortKey, children, className }: SortHeaderProps) {
         {children}
         {active ? (
           sortDir === "desc" ? (
-            <ArrowDown className="size-3.5" />
+            <HugeiconsIcon icon={ArrowDown01Icon} size={14} strokeWidth={1.5} />
           ) : (
-            <ArrowUp className="size-3.5" />
+            <HugeiconsIcon icon={ArrowUp01Icon} size={14} strokeWidth={1.5} />
           )
         ) : (
-          <ArrowUpDown className="size-3.5 opacity-40" />
+          <HugeiconsIcon icon={ArrowUpDownIcon} size={14} strokeWidth={1.5} className="opacity-40" />
         )}
       </button>
     </TableHead>

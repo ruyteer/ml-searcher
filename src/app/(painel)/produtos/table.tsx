@@ -1,4 +1,4 @@
-import { PackageX } from "lucide-react";
+import { IconProdutoVazio } from "@/components/icons";
 import { EmptyState } from "@/components/shell/empty-state";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getProducts, type ProductFilters } from "@/lib/data/products";
@@ -15,7 +15,7 @@ export async function ProductsTable({ filters }: { filters: ProductFilters }) {
   if (result.items.length === 0) {
     return (
       <EmptyState
-        icon={PackageX}
+        icon={IconProdutoVazio}
         title="Nenhum produto encontrado"
         description="Ajuste os filtros ou aguarde a próxima varredura."
       />

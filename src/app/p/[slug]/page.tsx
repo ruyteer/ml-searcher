@@ -73,7 +73,7 @@ export default async function PresellPage({ params }: PresellPageProps) {
   const steps = hasGate
     ? [
         `Toque em "${presell.gateLabel}" para acessar o parceiro.`,
-        "Aguarde alguns segundos — é rapidinho.",
+        "Aguarde alguns segundos, é rapidinho.",
         `Toque em "${presell.ctaText}" para ver a oferta no Mercado Livre.`,
       ]
     : [

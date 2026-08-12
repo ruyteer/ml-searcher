@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { IconAlerta } from "@/components/icons";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { IntegerInput } from "@/components/form/integer-input";
+import { PercentInput } from "@/components/form/percent-input";
+import { maskCategoryId } from "@/lib/mask";
 import { Field } from "./field";
 import { AlertBox } from "./alert-box";
 import { createWatchAction, updateWatchAction } from "./actions";
@@ -40,6 +43,8 @@ export function WatchDialog({ open, watch, onOpenChange }: WatchDialogProps) {
   const [enabled, setEnabled] = useState(watch?.enabled ?? true);
   const [categoryId, setCategoryId] = useState(watch?.categoryId ?? "");
   const [query, setQuery] = useState(watch?.query ?? "");
+  const [limit, setLimit] = useState(String(watch?.limit ?? 100));
+  const [minDiscount, setMinDiscount] = useState(watch?.minDiscount != null ? String(watch.minDiscount) : "");
   const searchOnly = categoryId.trim() === "" && query.trim() !== "";
 
   // Fecha o dialog automaticamente quando a action retorna sucesso.
@@ -58,8 +63,8 @@ export function WatchDialog({ open, watch, onOpenChange }: WatchDialogProps) {
             <DialogTitle>{isEdit ? "Editar categoria monitorada" : "Nova categoria monitorada"}</DialogTitle>
             <DialogDescription>
               O ID de categoria do Mercado Livre identifica uma categoria oficial (ex.: MLB1246 = Beleza
-              e Cuidado Pessoal). O termo de busca está indisponível no momento — o Mercado Livre bloqueou
-              a API de busca para esta aplicação — então a coleta hoje depende do ID de categoria.
+              e Cuidado Pessoal). O termo de busca está indisponível no momento, pois o Mercado Livre
+              bloqueou a API de busca para esta aplicação, então a coleta hoje depende do ID de categoria.
             </DialogDescription>
           </DialogHeader>
 
@@ -79,8 +84,9 @@ export function WatchDialog({ open, watch, onOpenChange }: WatchDialogProps) {
               label="ID de categoria"
               name="categoryId"
               value={categoryId}
-              onValueChange={setCategoryId}
+              onValueChange={(v) => setCategoryId(maskCategoryId(v))}
               placeholder="Ex.: MLB1246"
+              help="Prefixo do site (MLB, MLA...) seguido de números."
               error={err("categoryId")}
             />
             <Field
@@ -94,32 +100,32 @@ export function WatchDialog({ open, watch, onOpenChange }: WatchDialogProps) {
           </div>
 
           {searchOnly && (
-            <AlertBox icon={AlertTriangle} variant="warning">
-              Sem ID de categoria, esta watch não coleta nada agora — a busca por termo está bloqueada
+            <AlertBox icon={IconAlerta} variant="warning">
+              Sem ID de categoria, esta watch não coleta nada agora: a busca por termo está bloqueada
               pelo Mercado Livre. Preencha o ID de categoria ou deixe para quando a busca for liberada.
             </AlertBox>
           )}
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field
+            <IntegerInput
               label="Limite por varredura"
               name="limit"
-              type="number"
               min={10}
               max={1000}
-              defaultValue={String(watch?.limit ?? 100)}
-              help="Entre 10 e 1000 itens (padrão: 100)."
+              value={limit}
+              onValueChange={setLimit}
+              hint="Entre 10 e 1000 itens (padrão: 100)."
               error={err("limit")}
             />
-            <Field
-              label="Desconto mínimo próprio (%)"
+            <PercentInput
+              label="Desconto mínimo próprio"
               name="minDiscount"
-              type="number"
               min={0}
               max={90}
-              defaultValue={watch?.minDiscount != null ? String(watch.minDiscount) : ""}
-              placeholder="Herdar do global"
-              help="Vazio = usa o desconto mínimo global."
+              value={minDiscount}
+              onValueChange={setMinDiscount}
+              placeholder="Herda o global"
+              hint="Deixe vazio para usar o desconto mínimo global."
               error={err("minDiscount")}
             />
           </div>

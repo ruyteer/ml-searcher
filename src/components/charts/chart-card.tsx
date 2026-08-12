@@ -1,14 +1,14 @@
-import type { LucideIcon } from "lucide-react";
 import { Section } from "@/components/shell/section";
 import { EmptyState } from "@/components/shell/empty-state";
+import type { AppIcon } from "@/components/icons";
 
 export interface ChartCardProps {
   title: string;
   description?: string;
   actions?: React.ReactNode;
-  /// Sem dado nenhum no período — mostra o EmptyState em vez do gráfico.
+  /// Sem dado nenhum no período, mostra o EmptyState em vez do gráfico.
   isEmpty?: boolean;
-  emptyIcon?: LucideIcon;
+  emptyIcon?: AppIcon;
   emptyMessage?: string;
   emptyDescription?: string;
   /// Altura em px da área do gráfico. O ResponsiveContainer do recharts

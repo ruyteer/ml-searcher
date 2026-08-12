@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { CheckIcon, PlusSignIcon, UnfoldMoreIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { getCategoryLabel } from "@/lib/frases-labels";
 
 export interface CategoryComboboxProps {
   value: string;
@@ -28,7 +30,10 @@ export function CategoryCombobox({
   const [query, setQuery] = useState("");
 
   const trimmedQuery = query.trim();
-  const filtered = categories.filter((c) => c.toLowerCase().includes(trimmedQuery.toLowerCase()));
+  const filtered = categories.filter((c) =>
+    getCategoryLabel(c).toLowerCase().includes(trimmedQuery.toLowerCase()) ||
+    c.toLowerCase().includes(trimmedQuery.toLowerCase()),
+  );
   const canCreate =
     trimmedQuery.length > 0 && !categories.some((c) => c.toLowerCase() === trimmedQuery.toLowerCase());
 
@@ -49,8 +54,10 @@ export function CategoryCombobox({
       <PopoverTrigger
         render={
           <Button type="button" variant="outline" className={cn("w-full justify-between font-normal", className)}>
-            <span className={cn("truncate", !value && "text-muted-foreground")}>{value || placeholder}</span>
-            <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+            <span className={cn("truncate", !value && "text-muted-foreground")}>
+              {value ? getCategoryLabel(value) : placeholder}
+            </span>
+            <HugeiconsIcon icon={UnfoldMoreIcon} size={16} strokeWidth={1.5} className="shrink-0 opacity-50" />
           </Button>
         }
       />
@@ -70,8 +77,13 @@ export function CategoryCombobox({
               onClick={() => pick(c)}
               className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
             >
-              <Check className={cn("size-3.5 shrink-0", value === c ? "opacity-100" : "opacity-0")} />
-              <span className="truncate">{c}</span>
+              <HugeiconsIcon
+                icon={CheckIcon}
+                size={14}
+                strokeWidth={1.5}
+                className={cn("shrink-0", value === c ? "opacity-100" : "opacity-0")}
+              />
+              <span className="truncate">{getCategoryLabel(c)}</span>
             </button>
           ))}
           {canCreate && (
@@ -80,12 +92,12 @@ export function CategoryCombobox({
               onClick={() => pick(trimmedQuery)}
               className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-primary hover:bg-accent"
             >
-              <Plus className="size-3.5 shrink-0" />
-              <span className="truncate">Criar &quot;{trimmedQuery}&quot;</span>
+              <HugeiconsIcon icon={PlusSignIcon} size={14} strokeWidth={1.5} className="shrink-0" />
+              <span className="truncate">Criar &quot;{getCategoryLabel(trimmedQuery)}&quot;</span>
             </button>
           )}
           {filtered.length === 0 && !canCreate && (
-            <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma categoria.</p>
+            <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma categoria encontrada.</p>
           )}
         </div>
       </PopoverContent>

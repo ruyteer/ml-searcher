@@ -2,7 +2,8 @@
 
 import { createContext, useCallback, useContext, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCheck, Loader2, X } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { TickDouble02Icon, Loading03Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { OfferStatus } from "@/generated/prisma";
@@ -69,14 +70,18 @@ export function BulkActionsBar() {
     <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm">
       <span className="font-medium">{selected.size} selecionada(s)</span>
       <Button variant="outline" size="xs" disabled={isPending} onClick={() => run(OfferStatus.PUBLISHED)}>
-        {isPending ? <Loader2 className="animate-spin" /> : <CheckCheck />}
+        {isPending ? (
+          <HugeiconsIcon icon={Loading03Icon} size={13} strokeWidth={1.5} className="animate-spin" />
+        ) : (
+          <HugeiconsIcon icon={TickDouble02Icon} size={13} strokeWidth={1.5} />
+        )}
         Marcar publicadas
       </Button>
       <Button variant="outline" size="xs" disabled={isPending} onClick={() => run(OfferStatus.IGNORED)}>
         Ignorar
       </Button>
       <Button variant="ghost" size="xs" onClick={clear}>
-        <X /> Limpar
+        <HugeiconsIcon icon={Cancel01Icon} size={13} strokeWidth={1.5} /> Limpar
       </Button>
     </div>
   );

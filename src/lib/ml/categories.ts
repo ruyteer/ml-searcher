@@ -3,7 +3,7 @@
 /// A árvore muda muito raramente, então cada nó fica em cache no módulo por
 /// algumas horas — uma varredura completa não precisa bater na API de novo.
 
-import { mlRequest } from "./client";
+import { mlRequest, isMLApiError } from "./client";
 import type { MLCategoryRef, MLCategoryResponse, MLRootCategory } from "./types";
 
 /// Beleza e Cuidado Pessoal — raiz do nicho (verificado contra a API).
@@ -35,6 +35,8 @@ export interface CategoryNode {
   id: string;
   name: string;
   children: MLCategoryRef[];
+  /// Caminho da raiz do site até esta categoria, inclusive ela própria.
+  pathFromRoot: MLCategoryRef[];
 }
 
 export interface FlatCategory {
@@ -75,6 +77,7 @@ function toNode(raw: MLCategoryResponse): CategoryNode {
     id: raw.id,
     name: raw.name,
     children: (raw.children_categories ?? []).filter((c) => Boolean(c?.id)),
+    pathFromRoot: (raw.path_from_root ?? []).filter((c) => Boolean(c?.id)),
   };
 }
 
@@ -174,4 +177,36 @@ export async function walkCategoryTree(
   }
 
   return out;
+}
+
+// ------------------------------------------------------------- pertencimento
+
+/// A categoria está dentro da subárvore de `rootId`?
+///
+/// Usamos `path_from_root` de /categories/{id} em vez de achatar a árvore
+/// inteira com `walkCategoryTree`: a subárvore de Beleza tem 342 categorias em
+/// 5 níveis, então montar o conjunto custaria 342 chamadas, enquanto uma
+/// varredura toca algumas dezenas de categorias distintas. As duas formas usam
+/// o mesmo cache de 6h deste módulo, e o caminho vale em qualquer profundidade.
+///
+/// Devolve `null` quando a categoria não pôde ser resolvida (rede, 404) —
+/// quem chama decide o que fazer com a dúvida, para não descartar produto bom
+/// por causa de uma falha passageira.
+export async function isUnderCategory(
+  categoryId: string,
+  rootId: string = BEAUTY_ROOT,
+  options: CategoryOptions = {},
+): Promise<boolean | null> {
+  if (!categoryId) return null;
+  if (categoryId === rootId) return true;
+
+  let node: CategoryNode;
+  try {
+    node = await fetchCategory(categoryId, options);
+  } catch (err) {
+    if (isMLApiError(err) && err.code === "ABORTED") throw err;
+    return null;
+  }
+  if (node.pathFromRoot.length === 0) return null;
+  return node.pathFromRoot.some((step) => step.id === rootId);
 }

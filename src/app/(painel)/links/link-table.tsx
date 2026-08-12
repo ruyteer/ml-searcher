@@ -5,17 +5,18 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { toast } from "sonner";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Copy,
-  ExternalLink,
-  MoreHorizontal,
-  Trash2,
-  BadgePercent,
-  ImageOff,
-} from "lucide-react";
+  IconSubindo,
+  IconDescendo,
+  IconOrdenarColuna,
+  IconCopiar,
+  IconAbrirFora,
+  IconMaisOpcoes,
+  IconExcluir,
+  IconDesconto,
+  IconSemImagem,
+} from "@/components/icons";
 import {
   Table,
   TableBody,
@@ -81,7 +82,7 @@ export function LinkTable({ rows }: { rows: LinkRow[] }) {
   if (rows.length === 0) {
     return (
       <EmptyState
-        icon={BadgePercent}
+        icon={IconDesconto}
         title="Nenhum link encontrado"
         description="Ajuste os filtros ou crie um novo link para começar a rastrear cliques."
       />
@@ -104,9 +105,11 @@ export function LinkTable({ rows }: { rows: LinkRow[] }) {
                 className="flex items-center gap-1 hover:text-primary"
               >
                 Cliques
-                {isDesc && <ArrowDown className="size-3" />}
-                {isAsc && <ArrowUp className="size-3" />}
-                {!isDesc && !isAsc && <ArrowUpDown className="size-3" />}
+                {isDesc && <HugeiconsIcon icon={IconDescendo} size={12} strokeWidth={1.8} aria-hidden="true" />}
+                {isAsc && <HugeiconsIcon icon={IconSubindo} size={12} strokeWidth={1.8} aria-hidden="true" />}
+                {!isDesc && !isAsc && (
+                  <HugeiconsIcon icon={IconOrdenarColuna} size={12} strokeWidth={1.8} aria-hidden="true" />
+                )}
               </button>
             </TableHead>
             <TableHead>Únicos</TableHead>
@@ -191,14 +194,14 @@ function LinkTableRow({ row, onOpen }: { row: LinkRow; onOpen: () => void }) {
               />
             ) : (
               <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                <ImageOff className="size-3.5" />
+                <HugeiconsIcon icon={IconSemImagem} size={14} strokeWidth={1.5} aria-hidden="true" />
               </div>
             )}
             <span className="line-clamp-1 max-w-48 text-sm">{row.product.title}</span>
           </div>
         ) : (
           <span className="text-sm text-muted-foreground">
-            {row.label || "— (link avulso)"}
+            {row.label || "Link avulso"}
           </span>
         )}
       </TableCell>
@@ -213,7 +216,7 @@ function LinkTableRow({ row, onOpen }: { row: LinkRow; onOpen: () => void }) {
             {row.publicHref}
           </span>
           <Button variant="ghost" size="icon-xs" onClick={handleCopy} title="Copiar URL pública">
-            <Copy className="size-3" />
+            <HugeiconsIcon icon={IconCopiar} size={12} strokeWidth={1.8} aria-hidden="true" />
           </Button>
         </div>
       </TableCell>
@@ -229,9 +232,9 @@ function LinkTableRow({ row, onOpen }: { row: LinkRow; onOpen: () => void }) {
               />
             }
           >
-            {row.affiliate && <BadgePercent className="size-3 shrink-0 text-primary" />}
+            {row.affiliate && <HugeiconsIcon icon={IconDesconto} size={12} strokeWidth={1.8} className="shrink-0 text-primary" aria-hidden="true" />}
             <span className="truncate">{row.targetUrl}</span>
-            <ExternalLink className="size-3 shrink-0" />
+            <HugeiconsIcon icon={IconAbrirFora} size={12} strokeWidth={1.8} className="shrink-0" aria-hidden="true" />
           </TooltipTrigger>
           <TooltipContent>{row.targetUrl}</TooltipContent>
         </Tooltip>
@@ -240,7 +243,7 @@ function LinkTableRow({ row, onOpen }: { row: LinkRow; onOpen: () => void }) {
       <TableCell className="font-medium">{formatCompact(row.clickCount)}</TableCell>
       <TableCell className="text-muted-foreground">{formatCompact(row.uniqueClicks)}</TableCell>
       <TableCell className="text-xs text-muted-foreground">
-        {row.lastClickAt ? formatDateTime(row.lastClickAt) : "—"}
+        {row.lastClickAt ? formatDateTime(row.lastClickAt) : "-"}
       </TableCell>
 
       <TableCell onClick={stop}>
@@ -252,14 +255,14 @@ function LinkTableRow({ row, onOpen }: { row: LinkRow; onOpen: () => void }) {
           <DropdownMenuTrigger
             render={<Button variant="ghost" size="icon-sm" />}
           >
-            <MoreHorizontal className="size-4" />
+            <HugeiconsIcon icon={IconMaisOpcoes} size={16} strokeWidth={1.8} aria-hidden="true" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={handleCopy}>
-              <Copy /> Copiar URL pública
+              <HugeiconsIcon icon={IconCopiar} size={16} strokeWidth={1.6} aria-hidden="true" /> Copiar URL pública
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleOpenTarget}>
-              <ExternalLink /> Abrir destino
+              <HugeiconsIcon icon={IconAbrirFora} size={16} strokeWidth={1.6} aria-hidden="true" /> Abrir destino
             </DropdownMenuItem>
             <DropdownMenuItem
               variant="destructive"
@@ -268,7 +271,7 @@ function LinkTableRow({ row, onOpen }: { row: LinkRow; onOpen: () => void }) {
                 setDeleteOpen(true);
               }}
             >
-              <Trash2 /> Excluir
+              <HugeiconsIcon icon={IconExcluir} size={16} strokeWidth={1.6} aria-hidden="true" /> Excluir
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

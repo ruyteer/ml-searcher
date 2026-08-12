@@ -2,7 +2,8 @@
 
 import { useQueryStates } from "nuqs";
 import { useTransition } from "react";
-import { Search, Loader2 } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Search01Icon, Loading03Icon } from "@hugeicons/core-free-icons";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,12 @@ export function ProductsFilters({ watches }: ProductsFiltersProps) {
       <div className="flex min-w-48 flex-1 flex-col gap-1">
         <label className="text-xs text-muted-foreground">Buscar</label>
         <div className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <HugeiconsIcon
+            icon={Search01Icon}
+            size={14}
+            strokeWidth={1.5}
+            className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-muted-foreground"
+          />
           <Input
             value={filters.search}
             onChange={(e) => setFilters({ search: e.target.value || null, page: 1 })}
@@ -111,7 +117,7 @@ export function ProductsFilters({ watches }: ProductsFiltersProps) {
         </Button>
       )}
 
-      {isPending && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+      {isPending && <HugeiconsIcon icon={Loading03Icon} size={16} strokeWidth={1.5} className="animate-spin text-muted-foreground" />}
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import { CheckCheck } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { CheckCheckIcon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 
 export interface MessagePreviewProps {
@@ -24,7 +25,7 @@ export function MessagePreview({ body, className }: MessagePreviewProps) {
         {body ? body : <span className="text-[#e9edef]/50 italic">Mensagem vazia</span>}
         <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-[#e9edef]/60">
           <span>agora</span>
-          <CheckCheck className="size-3.5 text-[#53bdeb]" />
+          <HugeiconsIcon icon={CheckCheckIcon} size={14} strokeWidth={1.5} className="text-[#53bdeb]" />
         </div>
       </div>
     </div>

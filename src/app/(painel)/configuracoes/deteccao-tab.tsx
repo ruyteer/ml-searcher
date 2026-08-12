@@ -2,12 +2,15 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { Section } from "@/components/shell/section";
-import { formatBRL, fromCents } from "@/lib/format";
+import { formatBRL } from "@/lib/format";
+import { centsToMasked } from "@/lib/mask";
+import { PercentInput } from "@/components/form/percent-input";
+import { IntegerInput } from "@/components/form/integer-input";
+import { MoneyInput } from "@/components/form/money-input";
 import { updateDetectionSettingsAction } from "./actions";
 import { INITIAL_ACTION_STATE } from "./action-state";
 import { useActionToast } from "./use-action-toast";
 import { SaveButton } from "./save-button";
-import { Field } from "./field";
 import type { PublicSettings } from "./types";
 
 interface DeteccaoTabProps {
@@ -27,7 +30,7 @@ function valuesFrom(settings: PublicSettings) {
     minDiscount: String(settings.minDiscount),
     hotDiscount: String(settings.hotDiscount),
     minHistoryPoints: String(settings.minHistoryPoints),
-    minPrice: fromCents(settings.minPrice).toFixed(2),
+    minPrice: centsToMasked(settings.minPrice),
     minSoldQuantity: String(settings.minSoldQuantity),
   };
 }
@@ -55,60 +58,50 @@ export function DeteccaoTab({ settings, defaults }: DeteccaoTabProps) {
         description="Define quando uma queda de preço vira oferta e o que a varredura ignora."
       >
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field
-            label="Desconto mínimo (%)"
-            help='Só vira oferta o produto que estiver pelo menos X% abaixo da referência de preço.'
+          <PercentInput
+            label="Desconto mínimo"
+            hint="Só vira oferta o produto que estiver pelo menos esse percentual abaixo da referência de preço."
             defaultText={`Padrão: ${defaults.minDiscount}%`}
             name="minDiscount"
-            type="number"
-            min={0}
-            max={100}
             value={values.minDiscount}
             onValueChange={set("minDiscount")}
             error={err("minDiscount")}
           />
-          <Field
-            label='Desconto "imperdível" (%)'
-            help='A partir deste percentual a oferta é destacada como imperdível.'
+          <PercentInput
+            label='Desconto "imperdível"'
+            hint="A partir deste percentual a oferta é destacada como imperdível."
             defaultText={`Padrão: ${defaults.hotDiscount}%`}
             name="hotDiscount"
-            type="number"
-            min={0}
-            max={100}
             value={values.hotDiscount}
             onValueChange={set("hotDiscount")}
             error={err("hotDiscount")}
           />
-          <Field
+          <IntegerInput
             label="Pontos mínimos de histórico"
-            help="Quantas varreduras o produto precisa ter pro histórico contar como referência de preço."
+            hint="Quantas varreduras o produto precisa ter pro histórico contar como referência de preço."
             defaultText={`Padrão: ${defaults.minHistoryPoints}`}
             name="minHistoryPoints"
-            type="number"
             min={1}
             max={50}
             value={values.minHistoryPoints}
             onValueChange={set("minHistoryPoints")}
             error={err("minHistoryPoints")}
           />
-          <Field
-            label="Preço mínimo (R$)"
-            help="Ignora ofertas de produtos abaixo deste preço — evita lixo de R$ 1."
+          <MoneyInput
+            label="Preço mínimo"
+            hint="Ignora ofertas de produtos abaixo deste preço, evitando lixo de R$ 1."
             defaultText={`Padrão: ${formatBRL(defaults.minPrice)}`}
             name="minPrice"
-            type="number"
             min={0}
-            step="0.01"
             value={values.minPrice}
             onValueChange={set("minPrice")}
             error={err("minPrice")}
           />
-          <Field
+          <IntegerInput
             label="Vendas mínimas"
-            help="Ignora produtos com menos vendas do que isso (0 = não filtra por vendas)."
+            hint="Ignora produtos com menos vendas do que isso (0 não filtra por vendas)."
             defaultText={`Padrão: ${defaults.minSoldQuantity}`}
             name="minSoldQuantity"
-            type="number"
             min={0}
             value={values.minSoldQuantity}
             onValueChange={set("minSoldQuantity")}

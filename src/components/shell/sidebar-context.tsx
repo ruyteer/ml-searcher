@@ -17,7 +17,7 @@ const SidebarContext = React.createContext<SidebarContextValue | null>(null);
 
 // Preferência de collapse persistida em localStorage, exposta via
 // useSyncExternalStore: no server (e no primeiro paint do client, antes da
-// hidratação assentar) sempre "expandida" — sem isso teríamos que sincronizar
+// hidratação assentar) sempre "expandida". Sem isso teríamos que sincronizar
 // com setState dentro de um useEffect, o que causa uma renderização em cascata.
 type Listener = () => void;
 const listeners = new Set<Listener>();

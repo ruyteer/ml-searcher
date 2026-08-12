@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Image from "next/image";
-import { Link2Off, Link2, Search, X } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { IconDesvincular, IconLinks, IconBuscar, IconFechar } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,10 +32,10 @@ interface LinkPickerProps {
   onHasLinkChange?: (hasLink: boolean) => void;
 }
 
-const MODE_OPTIONS: { value: LinkMode; label: string; icon: typeof Link2 }[] = [
-  { value: "none", label: "Nenhum", icon: Link2Off },
-  { value: "existing", label: "Link existente", icon: Link2 },
-  { value: "new", label: "Novo, a partir de um produto", icon: Search },
+const MODE_OPTIONS: { value: LinkMode; label: string; icon: typeof IconLinks }[] = [
+  { value: "none", label: "Nenhum", icon: IconDesvincular },
+  { value: "existing", label: "Link existente", icon: IconLinks },
+  { value: "new", label: "Novo, a partir de um produto", icon: IconBuscar },
 ];
 
 /// Escolhe (ou cria) o link que vai virar o botão final da pre-sell.
@@ -72,7 +73,7 @@ export function LinkPicker({
             variant={mode === opt.value ? "default" : "outline"}
             onClick={() => setMode(opt.value)}
           >
-            <opt.icon className="size-3.5" />
+            <HugeiconsIcon icon={opt.icon} size={14} strokeWidth={1.6} aria-hidden="true" />
             {opt.label}
           </Button>
         ))}
@@ -87,7 +88,7 @@ export function LinkPicker({
             <SelectContent>
               {eligibleLinks.length === 0 && (
                 <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                  Nenhum link livre disponível — crie um novo.
+                  Nenhum link livre disponível, crie um novo.
                 </div>
               )}
               {eligibleLinks.map((link) => (
@@ -164,7 +165,7 @@ function ProductCombobox({
           <span className="text-xs text-muted-foreground">{formatBRL(value.price)}</span>
         </div>
         <Button type="button" variant="ghost" size="icon-sm" onClick={() => onChange(null)}>
-          <X className="size-3.5" />
+          <HugeiconsIcon icon={IconFechar} size={14} strokeWidth={1.8} aria-hidden="true" />
         </Button>
       </div>
     );
@@ -176,7 +177,7 @@ function ProductCombobox({
         Buscar produto
       </Label>
       <div className="relative">
-        <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+        <HugeiconsIcon icon={IconBuscar} size={16} strokeWidth={1.6} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
         <Input
           id="product-search"
           placeholder="Buscar produto por título..."

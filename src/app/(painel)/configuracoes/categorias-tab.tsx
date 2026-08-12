@@ -1,7 +1,17 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, Info, Search, Power, PowerOff, RefreshCw } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  IconAdicionar,
+  IconEditar,
+  IconExcluir,
+  IconInfo,
+  IconBuscar,
+  IconLigar,
+  IconDesligar,
+  IconAtualizar,
+} from "@/components/icons";
 import { toast } from "sonner";
 import { Section } from "@/components/shell/section";
 import { EmptyState } from "@/components/shell/empty-state";
@@ -162,7 +172,7 @@ export function CategoriasTab({ watches, globalMinDiscount }: CategoriasTabProps
     <>
       <Section
         title="Categorias monitoradas"
-        description="Árvore de categorias do Mercado Livre — o scraper varre cada categoria ligada, por destaques."
+        description="Árvore de categorias do Mercado Livre: o scraper varre cada categoria ligada, por destaques."
         actions={
           <div className="flex items-center gap-2">
             <form action={syncFormAction}>
@@ -173,21 +183,21 @@ export function CategoriasTab({ watches, globalMinDiscount }: CategoriasTabProps
                 label="Sincronizar categorias do Mercado Livre"
                 pendingLabel="Sincronizando..."
               >
-                <RefreshCw className="size-3.5" />
+                <HugeiconsIcon icon={IconAtualizar} size={14} strokeWidth={1.6} aria-hidden="true" />
                 Sincronizar categorias do Mercado Livre
               </SaveButton>
             </form>
             <Button size="sm" onClick={openCreate} className="gap-1.5">
-              <Plus className="size-4" /> Nova categoria
+              <HugeiconsIcon icon={IconAdicionar} size={16} strokeWidth={1.8} aria-hidden="true" /> Nova categoria
             </Button>
           </div>
         }
       >
         <div className="mb-4 flex flex-col gap-3">
           <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-            <Info className="mt-0.5 size-3.5 shrink-0" />
+            <HugeiconsIcon icon={IconInfo} size={14} strokeWidth={1.6} className="mt-0.5 shrink-0" aria-hidden="true" />
             <span>
-              <b>Termo de busca está indisponível no momento</b> — o Mercado Livre bloqueou a API de
+              <b>Termo de busca está indisponível no momento</b>, o Mercado Livre bloqueou a API de
               busca para esta aplicação, então a coleta hoje é só por categoria. &quot;Sincronizar
               categorias do Mercado Livre&quot; busca a árvore oficial de categorias e cria/atualiza uma
               watch por categoria, sem sobrescrever o que você já ligou, desligou ou ajustou.
@@ -200,7 +210,13 @@ export function CategoriasTab({ watches, globalMinDiscount }: CategoriasTabProps
               <span className="font-medium text-foreground">{watches.length}</span> categorias monitoradas
             </p>
             <div className="relative w-full max-w-xs">
-              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <HugeiconsIcon
+                icon={IconBuscar}
+                size={14}
+                strokeWidth={1.6}
+                className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -272,7 +288,11 @@ export function CategoriasTab({ watches, globalMinDiscount }: CategoriasTabProps
                             onClick={() => handleToggleBranch(watch, !enabled)}
                             title={`${enabled ? "Desliga" : "Liga"} esta categoria e as ${descendants.length} descendentes`}
                           >
-                            {enabled ? <PowerOff className="size-3" /> : <Power className="size-3" />}
+                            {enabled ? (
+                              <HugeiconsIcon icon={IconDesligar} size={12} strokeWidth={1.8} aria-hidden="true" />
+                            ) : (
+                              <HugeiconsIcon icon={IconLigar} size={12} strokeWidth={1.8} aria-hidden="true" />
+                            )}
                             {enabled ? "Desligar ramo" : "Ligar ramo"}
                           </Button>
                         )}
@@ -282,7 +302,7 @@ export function CategoriasTab({ watches, globalMinDiscount }: CategoriasTabProps
                       {watch.query ? (
                         <span className="text-xs text-muted-foreground">&quot;{watch.query}&quot;</span>
                       ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
+                        <span className="text-xs text-muted-foreground">-</span>
                       )}
                     </TableCell>
                     <TableCell>{watch.limit}</TableCell>
@@ -306,11 +326,11 @@ export function CategoriasTab({ watches, globalMinDiscount }: CategoriasTabProps
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon-sm" onClick={() => openEdit(watch)}>
-                          <Pencil className="size-3.5" />
+                          <HugeiconsIcon icon={IconEditar} size={14} strokeWidth={1.6} aria-hidden="true" />
                           <span className="sr-only">Editar</span>
                         </Button>
                         <Button variant="ghost" size="icon-sm" onClick={() => setDeleteTarget(watch)}>
-                          <Trash2 className="size-3.5" />
+                          <HugeiconsIcon icon={IconExcluir} size={14} strokeWidth={1.6} aria-hidden="true" />
                           <span className="sr-only">Excluir</span>
                         </Button>
                       </div>
@@ -336,7 +356,7 @@ export function CategoriasTab({ watches, globalMinDiscount }: CategoriasTabProps
             <AlertDialogTitle>Excluir &quot;{deleteTarget?.label}&quot;?</AlertDialogTitle>
             <AlertDialogDescription>
               A varredura para de rodar para esta categoria. Os produtos e ofertas já coletados
-              continuam no catálogo normalmente — só deixam de receber novidades por aqui.
+              continuam no catálogo normalmente, só deixam de receber novidades por aqui.
               {deleteTarget?.auto && (
                 <>
                   {" "}

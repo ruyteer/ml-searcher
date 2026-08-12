@@ -4,17 +4,18 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  Copy,
-  ExternalLink,
-  Eye,
-  ImageOff,
-  MousePointerClick,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  CopyPlus,
-} from "lucide-react";
+  IconCopiar,
+  IconAbrirFora,
+  IconVer,
+  IconSemImagem,
+  IconCliques,
+  IconMaisOpcoes,
+  IconEditar,
+  IconExcluir,
+  IconDuplicar,
+} from "@/components/icons";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -110,7 +111,7 @@ export function PresellCard({ presell, publicHref }: { presell: PresellListRow; 
           />
         ) : (
           <div className="flex size-full items-center justify-center text-muted-foreground">
-            <ImageOff className="size-6" />
+            <HugeiconsIcon icon={IconSemImagem} size={24} strokeWidth={1.5} aria-hidden="true" />
           </div>
         )}
         <Badge
@@ -132,28 +133,28 @@ export function PresellCard({ presell, publicHref }: { presell: PresellListRow; 
 
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" />}>
-              <MoreHorizontal className="size-4" />
+              <HugeiconsIcon icon={IconMaisOpcoes} size={16} strokeWidth={1.8} aria-hidden="true" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem render={<Link href={`/presells/${presell.id}`} />}>
-                <Pencil /> Editar
+                <HugeiconsIcon icon={IconEditar} size={16} strokeWidth={1.6} aria-hidden="true" /> Editar
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleDuplicate}>
-                <CopyPlus /> Duplicar
+                <HugeiconsIcon icon={IconDuplicar} size={16} strokeWidth={1.6} aria-hidden="true" /> Duplicar
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleCopy}>
-                <Copy /> Copiar URL pública
+                <HugeiconsIcon icon={IconCopiar} size={16} strokeWidth={1.6} aria-hidden="true" /> Copiar URL pública
               </DropdownMenuItem>
               <DropdownMenuItem
                 render={<a href={publicHref} target="_blank" rel="noopener noreferrer" />}
               >
-                <ExternalLink /> Ver página
+                <HugeiconsIcon icon={IconAbrirFora} size={16} strokeWidth={1.6} aria-hidden="true" /> Ver página
               </DropdownMenuItem>
               <DropdownMenuItem
                 variant="destructive"
                 onClick={() => setDeleteOpen(true)}
               >
-                <Trash2 /> Excluir
+                <HugeiconsIcon icon={IconExcluir} size={16} strokeWidth={1.6} aria-hidden="true" /> Excluir
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -161,10 +162,10 @@ export function PresellCard({ presell, publicHref }: { presell: PresellListRow; 
 
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
-            <Eye className="size-3.5" /> {formatCompact(presell.views)}
+            <HugeiconsIcon icon={IconVer} size={14} strokeWidth={1.6} aria-hidden="true" /> {formatCompact(presell.views)}
           </span>
           <span className="flex items-center gap-1">
-            <MousePointerClick className="size-3.5" /> {formatCompact(presell.linkClicks)}
+            <HugeiconsIcon icon={IconCliques} size={14} strokeWidth={1.6} aria-hidden="true" /> {formatCompact(presell.linkClicks)}
           </span>
           <span>{formatDateTime(presell.createdAt)}</span>
         </div>

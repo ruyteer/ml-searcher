@@ -1,4 +1,4 @@
-import { PackageSearch } from "lucide-react";
+import { IconOfertaVazia } from "@/components/icons";
 import { EmptyState } from "@/components/shell/empty-state";
 import { getOffers, getActivePresells, type OfferFilters } from "@/lib/data/offers";
 import { getSettings } from "@/lib/settings";
@@ -17,7 +17,7 @@ export async function OffersGrid({ filters }: { filters: OfferFilters }) {
   if (result.items.length === 0) {
     return (
       <EmptyState
-        icon={PackageSearch}
+        icon={IconOfertaVazia}
         title="Nenhuma oferta encontrada"
         description="Ajuste os filtros ou dispare uma nova varredura para encontrar ofertas."
       />

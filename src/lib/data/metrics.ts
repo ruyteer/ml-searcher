@@ -288,9 +288,9 @@ export interface DiscountBucket {
 }
 
 const DISCOUNT_RANGES: { range: string; min: number; max?: number }[] = [
-  { range: "15–20%", min: 15, max: 20 },
-  { range: "20–30%", min: 20, max: 30 },
-  { range: "30–50%", min: 30, max: 50 },
+  { range: "15-20%", min: 15, max: 20 },
+  { range: "20-30%", min: 20, max: 30 },
+  { range: "30-50%", min: 30, max: 50 },
   { range: "50%+", min: 50 },
 ];
 

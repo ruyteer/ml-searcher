@@ -1,6 +1,7 @@
 "use client";
 
-import { ImageOff } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { IconSemImagem } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -36,7 +37,7 @@ export function PresellPreview({ data }: { data: PresellPreviewData }) {
   const steps = hasGate
     ? [
         `Toque em "${data.gateLabel || "Acessar link do patrocinador"}" para acessar o parceiro.`,
-        "Aguarde alguns segundos — é rapidinho.",
+        "Aguarde alguns segundos, é rapidinho.",
         `Toque em "${data.ctaText || "Liberar oferta"}" para ver a oferta no Mercado Livre.`,
       ]
     : [
@@ -57,7 +58,7 @@ export function PresellPreview({ data }: { data: PresellPreviewData }) {
             <img src={data.imageUrl} alt={data.title} className="size-full object-cover" />
           ) : (
             <div className="flex size-full items-center justify-center text-muted-foreground">
-              <ImageOff className="size-8" />
+              <HugeiconsIcon icon={IconSemImagem} size={32} strokeWidth={1.5} aria-hidden="true" />
             </div>
           )}
         </div>
@@ -103,7 +104,7 @@ export function PresellPreview({ data }: { data: PresellPreviewData }) {
 
         {!data.hasExitLink && (
           <p className="rounded-lg bg-destructive/10 p-3 text-center text-xs text-destructive">
-            Sem link associado — o botão final não vai aparecer na página publicada.
+            Sem link associado. O botão final não vai aparecer na página publicada.
           </p>
         )}
 

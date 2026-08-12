@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Shuffle } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ShuffleIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { getCategoryLabel } from "@/lib/frases-labels";
 import type { Phrase } from "@/generated/prisma";
 
 export interface PhrasePickerProps {
@@ -50,12 +52,14 @@ export function PhrasePicker({ phrases, onPick, className }: PhrasePickerProps) 
       <div className="flex items-center gap-2">
         <Select value={activeCategory} onValueChange={(v) => setCategory(v ?? "")}>
           <SelectTrigger className="flex-1">
-            <SelectValue placeholder="Categoria" />
+            <SelectValue placeholder="Categoria">
+              {(v: string | null) => (v ? getCategoryLabel(v) : "Categoria")}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {categories.map((c) => (
               <SelectItem key={c} value={c}>
-                {c}
+                {getCategoryLabel(c)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -69,7 +73,7 @@ export function PhrasePicker({ phrases, onPick, className }: PhrasePickerProps) 
           title="Sortear frase"
           aria-label="Sortear frase"
         >
-          <Shuffle className="size-4" />
+          <HugeiconsIcon icon={ShuffleIcon} size={16} strokeWidth={1.5} />
         </Button>
       </div>
       <ScrollArea className="h-32 rounded-lg border border-border">

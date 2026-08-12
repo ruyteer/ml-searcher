@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Link2 } from "lucide-react";
+import { IconLinks } from "@/components/icons";
 import { Section } from "@/components/shell/section";
 import { EmptyState } from "@/components/shell/empty-state";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,7 +12,7 @@ export async function TopLinksSection({ period }: { period: Period }) {
   return (
     <Section title="Links mais clicados" description="Top 10 no período selecionado.">
       {links.length === 0 ? (
-        <EmptyState icon={Link2} title="Nenhum clique em link neste período" className="border-none py-10" />
+        <EmptyState icon={IconLinks} title="Nenhum clique em link neste período" className="border-none py-10" />
       ) : (
         <Table>
           <TableHeader>

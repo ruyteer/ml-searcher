@@ -1,7 +1,8 @@
 "use client";
 
 import { useTransition } from "react";
-import { Link2, Loader2, ChevronDown, ExternalLink, Route, FileText } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Link01Icon, Loading03Icon, ChevronDownIcon, ExternalLinkIcon, Route01Icon, File02Icon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,24 +58,28 @@ export function GenerateLinkMenu({ productId, presells = [], onGenerated, size =
       <DropdownMenuTrigger
         render={
           <Button variant="outline" size={size} className={cn(className)} disabled={isPending}>
-            {isPending ? <Loader2 className="animate-spin" /> : <Link2 />}
+            {isPending ? (
+              <HugeiconsIcon icon={Loading03Icon} size={14} strokeWidth={1.5} className="animate-spin" />
+            ) : (
+              <HugeiconsIcon icon={Link01Icon} size={14} strokeWidth={1.5} />
+            )}
             Gerar link
-            <ChevronDown className="ml-auto opacity-60" />
+            <HugeiconsIcon icon={ChevronDownIcon} size={14} strokeWidth={1.5} className="ml-auto opacity-60" />
           </Button>
         }
       />
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>Tipo de link</DropdownMenuLabel>
         <DropdownMenuItem onClick={() => run(LinkKind.DIRECT)}>
-          <ExternalLink /> Link direto
+          <HugeiconsIcon icon={ExternalLinkIcon} size={15} strokeWidth={1.5} /> Link direto
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => run(LinkKind.TRACKED)}>
-          <Route /> Link rastreado
+          <HugeiconsIcon icon={Route01Icon} size={15} strokeWidth={1.5} /> Link rastreado
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuSub>
           <DropdownMenuSubTrigger disabled={presells.length === 0}>
-            <FileText /> Link com pre-sell
+            <HugeiconsIcon icon={File02Icon} size={15} strokeWidth={1.5} /> Link com pre-sell
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
             {presells.length === 0 ? (

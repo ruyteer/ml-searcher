@@ -4,14 +4,19 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { IconSucesso, IconCarregando, IconErroCirculo } from "@/components/icons";
 import { PageHeader } from "@/components/shell/page-header";
 import { Section } from "@/components/shell/section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { fromCents } from "@/lib/format";
+import { MoneyInput } from "@/components/form/money-input";
+import { UrlInput } from "@/components/form/url-input";
+import { SlugInput } from "@/components/form/slug-input";
+import { IntegerInput } from "@/components/form/integer-input";
+import { centsToMasked, moneyToCents } from "@/lib/mask";
 import { LinkPicker } from "./link-picker";
 import { PresellPreview } from "./presell-preview";
 import { upsertPresellAction, checkSlugAvailableAction, slugifyAction } from "./actions";
@@ -26,7 +31,7 @@ interface PresellEditorProps {
 
 function centsToInputValue(cents: number | null): string {
   if (cents == null) return "";
-  return fromCents(cents).toFixed(2).replace(".", ",");
+  return centsToMasked(cents);
 }
 
 type SlugStatus = "idle" | "checking" | "available" | "taken" | "reserved" | "invalid";
@@ -152,28 +157,21 @@ export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorPro
                 {fieldError("title") && <p className="text-xs text-destructive">{fieldError("title")}</p>}
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="slug">Slug (/p/...)</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="slug"
-                    name="slug"
-                    value={slug}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setSlugTouched(true);
-                      setSlug(v);
-                      setSlugStatus(statusForSlug(v));
-                    }}
-                    required
-                    maxLength={80}
-                    className="font-mono"
-                  />
-                  <SlugStatusBadge status={slugStatus} />
-                </div>
-                <p className="text-xs text-muted-foreground">letras minúsculas, números e hífens</p>
-                {fieldError("slug") && <p className="text-xs text-destructive">{fieldError("slug")}</p>}
-              </div>
+              <SlugInput
+                label="Slug"
+                name="slug"
+                value={slug}
+                onValueChange={(v) => {
+                  setSlugTouched(true);
+                  setSlug(v);
+                  setSlugStatus(statusForSlug(v));
+                }}
+                required
+                maxLength={80}
+                hint="Letras minúsculas, números e hífen entre as palavras."
+                error={fieldError("slug")}
+                addon={<SlugStatusBadge status={slugStatus} />}
+              />
 
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="headline">Headline</Label>
@@ -214,47 +212,31 @@ export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorPro
                 />
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="imageUrl">URL da imagem</Label>
-                <Input
-                  id="imageUrl"
-                  name="imageUrl"
-                  type="url"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://..."
-                />
-                {fieldError("imageUrl") && (
-                  <p className="text-xs text-destructive">{fieldError("imageUrl")}</p>
-                )}
-              </div>
+              <UrlInput
+                label="URL da imagem"
+                name="imageUrl"
+                value={imageUrl}
+                onValueChange={setImageUrl}
+                placeholder="https://..."
+                error={fieldError("imageUrl")}
+              />
             </div>
           </Section>
 
-          <Section title="Preço na vitrine" description="Opcional — valores em reais, salvos em centavos.">
+          <Section title="Preço na vitrine" description="Opcional. Valores em reais, salvos em centavos.">
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="priceLabelReais">Preço</Label>
-                <Input
-                  id="priceLabelReais"
-                  name="priceLabelReais"
-                  inputMode="decimal"
-                  placeholder="0,00"
-                  value={priceLabelReais}
-                  onChange={(e) => setPriceLabelReais(e.target.value)}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="originalLabelReais">Preço &quot;de&quot;</Label>
-                <Input
-                  id="originalLabelReais"
-                  name="originalLabelReais"
-                  inputMode="decimal"
-                  placeholder="0,00"
-                  value={originalLabelReais}
-                  onChange={(e) => setOriginalLabelReais(e.target.value)}
-                />
-              </div>
+              <MoneyInput
+                label="Preço"
+                name="priceLabelReais"
+                value={priceLabelReais}
+                onValueChange={setPriceLabelReais}
+              />
+              <MoneyInput
+                label='Preço "de"'
+                name="originalLabelReais"
+                value={originalLabelReais}
+                onValueChange={setOriginalLabelReais}
+              />
             </div>
           </Section>
 
@@ -263,18 +245,14 @@ export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorPro
             description="Passo intermediário antes do botão final. Deixe a URL vazia pra pular esse passo."
           >
             <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="gateUrl">URL do parceiro</Label>
-                <Input
-                  id="gateUrl"
-                  name="gateUrl"
-                  type="url"
-                  placeholder="https://..."
-                  value={gateUrl}
-                  onChange={(e) => setGateUrl(e.target.value)}
-                />
-                {fieldError("gateUrl") && <p className="text-xs text-destructive">{fieldError("gateUrl")}</p>}
-              </div>
+              <UrlInput
+                label="URL do parceiro"
+                name="gateUrl"
+                placeholder="https://..."
+                value={gateUrl}
+                onValueChange={setGateUrl}
+                error={fieldError("gateUrl")}
+              />
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="gateLabel">Rótulo do botão do gate</Label>
                 <Input
@@ -285,26 +263,15 @@ export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorPro
                   maxLength={80}
                 />
               </div>
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="gateDelay">Espera antes de liberar o botão final</Label>
-                  <span className="text-sm font-medium text-foreground">{gateDelay}s</span>
-                </div>
-                <input
-                  id="gateDelay"
-                  name="gateDelay"
-                  type="range"
-                  min={0}
-                  max={30}
-                  step={1}
-                  value={gateDelay}
-                  onChange={(e) => setGateDelay(Number(e.target.value))}
-                  className="w-full accent-primary"
-                />
-                <p className="text-xs text-muted-foreground">
-                  0 libera o botão direto, sem contagem regressiva.
-                </p>
-              </div>
+              <IntegerInput
+                label="Espera antes de liberar o botão final (segundos)"
+                name="gateDelay"
+                min={0}
+                max={30}
+                value={String(gateDelay)}
+                onValueChange={(v) => setGateDelay(v === "" ? 0 : Number(v))}
+                hint="0 libera o botão direto, sem contagem regressiva."
+              />
             </div>
           </Section>
 
@@ -330,10 +297,8 @@ export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorPro
               body,
               ctaText,
               imageUrl,
-              priceLabelCents: priceLabelReais ? Math.round(parseReais(priceLabelReais) * 100) : null,
-              originalLabelCents: originalLabelReais
-                ? Math.round(parseReais(originalLabelReais) * 100)
-                : null,
+              priceLabelCents: priceLabelReais ? moneyToCents(priceLabelReais) : null,
+              originalLabelCents: originalLabelReais ? moneyToCents(originalLabelReais) : null,
               gateUrl,
               gateLabel,
               gateDelay,
@@ -346,23 +311,26 @@ export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorPro
   );
 }
 
-function parseReais(value: string): number {
-  const n = Number(value.replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
-}
-
 function SlugStatusBadge({ status }: { status: SlugStatus }) {
   switch (status) {
     case "checking":
-      return <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />;
+      return (
+        <HugeiconsIcon
+          icon={IconCarregando}
+          size={16}
+          strokeWidth={1.8}
+          className="shrink-0 animate-spin text-muted-foreground"
+          aria-hidden="true"
+        />
+      );
     case "available":
-      return <CheckCircle2 className="size-4 shrink-0 text-success" />;
+      return <HugeiconsIcon icon={IconSucesso} size={16} strokeWidth={1.8} className="shrink-0 text-success" aria-hidden="true" />;
     case "taken":
-      return <XCircle className="size-4 shrink-0 text-destructive" />;
+      return <HugeiconsIcon icon={IconErroCirculo} size={16} strokeWidth={1.8} className="shrink-0 text-destructive" aria-hidden="true" />;
     case "reserved":
-      return <XCircle className="size-4 shrink-0 text-destructive" />;
+      return <HugeiconsIcon icon={IconErroCirculo} size={16} strokeWidth={1.8} className="shrink-0 text-destructive" aria-hidden="true" />;
     case "invalid":
-      return <XCircle className="size-4 shrink-0 text-muted-foreground" />;
+      return <HugeiconsIcon icon={IconErroCirculo} size={16} strokeWidth={1.8} className="shrink-0 text-muted-foreground" aria-hidden="true" />;
     default:
       return null;
   }

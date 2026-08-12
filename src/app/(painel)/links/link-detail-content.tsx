@@ -89,7 +89,7 @@ export async function LinkDetailContent({ id }: { id: string }) {
                         duplicado
                       </Badge>
                     )}
-                    <span>{c.country ?? "—"}</span>
+                    <span>{c.country ?? "-"}</span>
                     <span className="text-muted-foreground">· {c.device ?? "desconhecido"}</span>
                   </span>
                 </li>

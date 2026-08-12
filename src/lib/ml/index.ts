@@ -21,7 +21,6 @@ export type {
   MLSellerReputation,
   MLShipping,
   MLPaging,
-  MLSearchResponse,
   MLMultiGetEntry,
   MLErrorBody,
   MLRootCategory,
@@ -34,11 +33,14 @@ export type {
   MLCatalogProduct,
   MLCatalogListing,
   MLCatalogListingsResponse,
+  MLCatalogSearchItem,
+  MLProductSearchPaging,
+  MLProductSearchResponse,
   NormalizedProduct,
 } from "./types";
 
-export { searchWatch, searchWatchDetailed, fetchItems } from "./search";
-export type { WatchQuery, SearchOptions, SearchResult } from "./search";
+export { searchProducts, searchWatch, searchWatchDetailed, fetchItems } from "./search";
+export type { WatchQuery, SearchOptions, SearchProductsInput, SearchResult } from "./search";
 
 export {
   BEAUTY_ROOT,
@@ -46,6 +48,7 @@ export {
   fetchCategory,
   fetchRootCategories,
   walkCategoryTree,
+  isUnderCategory,
   clearCategoryCache,
 } from "./categories";
 export type {
@@ -56,26 +59,23 @@ export type {
 } from "./categories";
 
 export {
-  fetchHighlights,
   fetchCatalogProduct,
+  catalogProductFromSearch,
   fetchCatalogListings,
   cheapestListing,
   normalizeListing,
   enrichFromItems,
-  collectCategory,
-  collectCategoryDetailed,
+  enrichProducts,
+  mergeEnrichment,
   catalogPermalink,
   itemPermalink,
-} from "./highlights";
-export type { CatalogProduct, CategoryCollection, HighlightsOptions } from "./highlights";
+} from "./catalog";
+export type { CatalogProduct, CatalogOptions } from "./catalog";
 
-export {
-  collectForWatch,
-  getCollectionMode,
-  resetSearchBlock,
-  isSearchBlocked,
-  getSearchBlockedUntil,
-} from "./collect";
+export { fetchHighlights, collectCategory, collectCategoryDetailed } from "./highlights";
+export type { CategoryCollection, HighlightsOptions } from "./highlights";
+
+export { collectForWatch, getCollectionMode } from "./collect";
 export type {
   CollectionSource,
   CollectResult,

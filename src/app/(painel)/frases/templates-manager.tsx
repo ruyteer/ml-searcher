@@ -2,7 +2,8 @@
 
 import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { CopyPlus, Plus, Star, Trash2 } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { CopyPlusIcon, PlusSignIcon, StarIcon, Delete02Icon } from "@hugeicons/core-free-icons";
 import { Section } from "@/components/shell/section";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -113,7 +114,7 @@ export function TemplatesManager({ templates, phrases }: TemplatesManagerProps) 
           className={cn("mt-3 w-full", selected === null && "border-primary text-primary")}
           onClick={() => setSelectedId(null)}
         >
-          <Plus className="size-3.5" />
+          <HugeiconsIcon icon={PlusSignIcon} size={14} strokeWidth={1.5} />
           Novo template
         </Button>
       </Section>
@@ -199,7 +200,7 @@ function TemplateEditorPanel({
                     aria-label="Duplicar"
                     title="Duplicar"
                   >
-                    <CopyPlus className="size-3.5" />
+                    <HugeiconsIcon icon={CopyPlusIcon} size={14} strokeWidth={1.5} />
                   </Button>
                   {!selected.isDefault && (
                     <Button
@@ -211,7 +212,7 @@ function TemplateEditorPanel({
                       aria-label="Definir como padrão"
                       title="Definir como padrão"
                     >
-                      <Star className="size-3.5" />
+                      <HugeiconsIcon icon={StarIcon} size={14} strokeWidth={1.5} />
                     </Button>
                   )}
                   <AlertDialog>
@@ -227,7 +228,7 @@ function TemplateEditorPanel({
                         />
                       }
                     >
-                      <Trash2 className="size-3.5" />
+                      <HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={1.5} />
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>

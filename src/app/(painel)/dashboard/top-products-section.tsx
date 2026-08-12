@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Package } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { IconProdutos } from "@/components/icons";
 import { Section } from "@/components/shell/section";
 import { EmptyState } from "@/components/shell/empty-state";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -14,7 +15,7 @@ export async function TopProductsSection({ period }: { period: Period }) {
     <Section title="Produtos mais clicados" description="Top 10 no período selecionado." className="h-full">
       {products.length === 0 ? (
         <EmptyState
-          icon={Package}
+          icon={IconProdutos}
           title="Nenhum clique em produto neste período"
           className="border-none py-10"
         />
@@ -41,7 +42,7 @@ export async function TopProductsSection({ period }: { period: Period }) {
                       />
                     ) : (
                       <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-muted">
-                        <Package className="size-4 text-muted-foreground" />
+                        <HugeiconsIcon icon={IconProdutos} size={16} strokeWidth={1.6} className="text-muted-foreground" aria-hidden="true" />
                       </span>
                     )}
                     <span className="line-clamp-2 max-w-xs text-sm text-foreground">{product.title}</span>
