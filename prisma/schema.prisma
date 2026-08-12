@@ -1,0 +1,342 @@
+// ML Searcher — schema
+// Fluxo: ML API -> Product/PriceHistory -> Offer -> Link -> Click
+//        Link pode apontar direto ou passar por uma PresellPage.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------- catálogo
+
+/// Categoria/keyword monitorada. O scraper varre uma destas por vez.
+model Watch {
+  id         String    @id @default(cuid())
+  /// Rótulo exibido no painel, ex. "Máquinas de cortar cabelo"
+  label      String
+  /// ID de categoria do ML (ex. MLB264724). Nulo quando a busca é só por termo.
+  categoryId String?
+  /// Termo de busca livre. Nulo quando a busca é só por categoria.
+  query      String?
+  enabled    Boolean   @default(true)
+  /// Sobrescreve o desconto mínimo global só para esta watch.
+  minDiscount Int?
+  /// Quantos itens puxar por varredura (a API pagina de 50 em 50).
+  limit      Int       @default(100)
+  lastRunAt  DateTime?
+  products   Product[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([enabled])
+}
+
+model Product {
+  id            String  @id @default(cuid())
+  /// ID do item no Mercado Livre, ex. MLB1234567890
+  mlId          String  @unique
+  title         String
+  thumbnail     String?
+  permalink     String
+
+  /// Preço atual em centavos — evita float em dinheiro.
+  price         Int
+  /// "De" declarado pelo ML, quando existe. Em centavos.
+  originalPrice Int?
+  currency      String  @default("BRL")
+
+  categoryId    String?
+  categoryName  String?
+  sellerId      String?
+  sellerName    String?
+  /// power_seller / platinum / gold — usado no score.
+  sellerStatus  String?
+
+  freeShipping  Boolean @default(false)
+  soldQuantity  Int     @default(0)
+  available     Int     @default(0)
+  condition     String?
+  officialStore Boolean @default(false)
+
+  watchId       String?
+  watch         Watch?  @relation(fields: [watchId], references: [id], onDelete: SetNull)
+
+  blocked       Boolean @default(false)
+
+  firstSeenAt   DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  history       PriceHistory[]
+  offers        Offer[]
+  links         Link[]
+
+  @@index([lastSeenAt])
+  @@index([categoryId])
+  @@index([blocked])
+}
+
+/// Um ponto de preço por varredura. É daqui que sai o "mais barato que o normal".
+model PriceHistory {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  price      Int
+  capturedAt DateTime @default(now())
+
+  @@index([productId, capturedAt])
+}
+
+enum OfferStatus {
+  NEW
+  PUBLISHED
+  IGNORED
+}
+
+/// Uma queda de preço detectada. Só vira Offer o que passou do threshold.
+model Offer {
+  id            String      @id @default(cuid())
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  price         Int
+  /// Base de comparação usada: original_price do ML ou a média/mínima do histórico.
+  referencePrice Int
+  /// Como a referência foi obtida: ML_ORIGINAL | HISTORY_AVG | HISTORY_MIN
+  referenceKind String
+  discountPct   Int
+  /// 0-100. Desconto + reputação + vendas + frete grátis.
+  score         Int         @default(0)
+
+  status        OfferStatus @default(NEW)
+  runId         String?
+  run           ScrapeRun?  @relation(fields: [runId], references: [id], onDelete: SetNull)
+
+  detectedAt    DateTime    @default(now())
+  publishedAt   DateTime?
+
+  @@index([status, detectedAt])
+  @@index([score])
+  @@index([productId, detectedAt])
+}
+
+// ------------------------------------------------------------------- links
+
+enum LinkKind {
+  /// Vai direto pro Mercado Livre, sem contabilizar clique.
+  DIRECT
+  /// Passa por /r/{slug} para contar o clique e depois redireciona.
+  TRACKED
+  /// Passa por /p/{slug} (pre-sell) e de lá para o destino final.
+  PRESELL
+}
+
+model Link {
+  id          String   @id @default(cuid())
+  /// Parte final da URL pública: /r/{slug} ou /p/{slug}
+  slug        String   @unique
+  kind        LinkKind @default(TRACKED)
+  label       String?
+
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  /// Destino final. URL de afiliado quando houver, senão o permalink do produto.
+  targetUrl   String
+  /// true quando targetUrl foi montado com a tag de afiliado; false = link cru.
+  affiliate   Boolean  @default(false)
+
+  presellId   String?
+  presell     Presell? @relation(fields: [presellId], references: [id], onDelete: SetNull)
+
+  clickCount  Int      @default(0)
+  active      Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  clicks      Click[]
+
+  @@index([productId])
+  @@index([createdAt])
+}
+
+model Click {
+  id        String   @id @default(cuid())
+  linkId    String
+  link      Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  /// Hash do IP — o suficiente pra deduplicar sem guardar dado pessoal.
+  ipHash    String?
+  userAgent String?
+  referer   String?
+  country   String?
+  /// mobile | desktop | tablet | bot
+  device    String?
+  /// Clique repetido do mesmo ipHash em janela curta.
+  duplicate Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([linkId, createdAt])
+  @@index([createdAt])
+}
+
+// ----------------------------------------------------------------- presell
+
+model Presell {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  title         String
+  headline      String
+  /// Texto de apoio, aceita quebras de linha.
+  body          String?
+  ctaText       String   @default("Liberar oferta")
+
+  /// Link intermediário que o visitante abre antes de liberar o destino.
+  gateUrl       String?
+  gateLabel     String   @default("Acessar link do patrocinador")
+  /// Segundos de espera antes de liberar o botão final.
+  gateDelay     Int      @default(5)
+
+  imageUrl      String?
+  /// Preço exibido na página, em centavos. Só vitrine.
+  priceLabel    Int?
+  originalLabel Int?
+
+  active        Boolean  @default(true)
+  views         Int      @default(0)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  links         Link[]
+
+  @@index([active])
+}
+
+// -------------------------------------------------- copy: frases/templates
+
+model Phrase {
+  id         String   @id @default(cuid())
+  text       String
+  /// Agrupador livre: "abertura", "urgência", "cta", "emoji"...
+  category   String   @default("geral")
+  usageCount Int      @default(0)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([category, active])
+}
+
+model MessageTemplate {
+  id         String   @id @default(cuid())
+  name       String
+  /// Suporta {{titulo}} {{preco}} {{precoAntigo}} {{desconto}} {{link}} {{frase}}
+  body       String
+  isDefault  Boolean  @default(false)
+  usageCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------- whatsapp
+
+model WhatsappInstance {
+  id        String   @id @default(cuid())
+  name      String
+  /// Base URL da Uazapi, ex. https://free.uazapi.com
+  host      String
+  /// Token da instância. Guardado cifrado na aplicação.
+  token     String
+  /// connected | disconnected | unknown
+  status    String   @default("unknown")
+  lastSync  DateTime?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  groups    WhatsappGroup[]
+  sends     SendLog[]
+}
+
+model WhatsappGroup {
+  id         String   @id @default(cuid())
+  instanceId String
+  instance   WhatsappInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  /// JID do grupo, ex. 1203630@g.us
+  remoteJid  String
+  name       String
+  enabled    Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  sends      SendLog[]
+
+  @@unique([instanceId, remoteJid])
+}
+
+model SendLog {
+  id         String   @id @default(cuid())
+  instanceId String
+  instance   WhatsappInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  groupId    String?
+  group      WhatsappGroup?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  message    String
+  linkId     String?
+  /// pending | sent | failed
+  status     String   @default("pending")
+  error      String?
+  /// Preenchido quando o envio é agendado para o futuro.
+  scheduledFor DateTime?
+  sentAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([status, scheduledFor])
+  @@index([createdAt])
+}
+
+// ------------------------------------------------------------ execução/cfg
+
+enum RunStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+  PARTIAL
+}
+
+model ScrapeRun {
+  id            String    @id @default(cuid())
+  status        RunStatus @default(RUNNING)
+  /// manual | cron
+  trigger       String    @default("manual")
+
+  watchesTotal  Int       @default(0)
+  watchesDone   Int       @default(0)
+  itemsSeen     Int       @default(0)
+  productsNew   Int       @default(0)
+  offersNew     Int       @default(0)
+
+  error         String?
+  /// Linhas de log da execução, para exibir no painel.
+  log           String?
+
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+
+  offers        Offer[]
+
+  @@index([startedAt])
+}
+
+/// Configuração editável pelo painel — desconto mínimo, tag de afiliado,
+/// domínio público dos links, etc. Tudo em texto, tipado na camada de app.
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

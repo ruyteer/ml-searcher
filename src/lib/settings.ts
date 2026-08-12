@@ -1,0 +1,109 @@
+import "server-only";
+import { unstable_cache } from "next/cache";
+import { prisma } from "./prisma";
+import { TAGS, bust } from "./cache";
+
+export const SETTINGS_TAG = TAGS.settings;
+
+/// Tudo que o painel deixa configurar. Os defaults valem enquanto a chave
+/// não existir no banco, então a app sobe funcionando sem nenhum setup.
+export const SETTINGS_SCHEMA = {
+  /// Desconto mínimo (%) para uma queda de preço virar oferta.
+  minDiscount: { default: 15, kind: "number" },
+  /// A partir daqui a oferta é destacada como "imperdível".
+  hotDiscount: { default: 30, kind: "number" },
+  /// Quantas varreduras um produto precisa ter para o histórico valer como referência.
+  minHistoryPoints: { default: 3, kind: "number" },
+  /// Ignora ofertas de produtos abaixo deste preço (centavos). Evita lixo de R$1.
+  minPrice: { default: 1000, kind: "number" },
+  /// Ignora produtos que nunca venderam nada.
+  minSoldQuantity: { default: 0, kind: "number" },
+
+  /// Domínio público usado ao montar os links copiáveis. Vazio = usa a URL da request.
+  publicBaseUrl: { default: "", kind: "string" },
+
+  /// Programa de afiliados: quando ativo, os links ganham os parâmetros abaixo.
+  affiliateEnabled: { default: false, kind: "boolean" },
+  affiliateTool: { default: "", kind: "string" },
+  affiliateWord: { default: "", kind: "string" },
+
+  /// Credenciais da API do Mercado Livre. Preenchíveis pelo painel ou por env.
+  mlClientId: { default: "", kind: "string" },
+  mlClientSecret: { default: "", kind: "string" },
+  mlSiteId: { default: "MLB", kind: "string" },
+
+  /// Uazapi (fase 6).
+  uazapiHost: { default: "", kind: "string" },
+} as const;
+
+export type SettingKey = keyof typeof SETTINGS_SCHEMA;
+
+type Kind<K extends SettingKey> = (typeof SETTINGS_SCHEMA)[K]["kind"];
+type Value<K extends SettingKey> = Kind<K> extends "number"
+  ? number
+  : Kind<K> extends "boolean"
+    ? boolean
+    : string;
+
+export type Settings = { [K in SettingKey]: Value<K> };
+
+function parse<K extends SettingKey>(key: K, raw: string): Value<K> {
+  const kind = SETTINGS_SCHEMA[key].kind;
+  if (kind === "number") return (Number(raw) || 0) as Value<K>;
+  if (kind === "boolean") return (raw === "true") as Value<K>;
+  return raw as Value<K>;
+}
+
+const load = unstable_cache(
+  async () => {
+    const rows = await prisma.setting.findMany();
+    const byKey = new Map(rows.map((r) => [r.key, r.value]));
+
+    const out = {} as Settings;
+    for (const key of Object.keys(SETTINGS_SCHEMA) as SettingKey[]) {
+      const raw = byKey.get(key);
+      // env vence o default mas perde para o que foi salvo no painel
+      const fallback = envFallback(key) ?? SETTINGS_SCHEMA[key].default;
+      // @ts-expect-error — a união de tipos é resolvida por `parse`
+      out[key] = raw === undefined ? fallback : parse(key, raw);
+    }
+    return out;
+  },
+  ["settings"],
+  { tags: [SETTINGS_TAG] },
+);
+
+/// Permite bootar via variável de ambiente no Railway sem passar pelo painel.
+function envFallback(key: SettingKey): string | number | boolean | undefined {
+  const map: Partial<Record<SettingKey, string | undefined>> = {
+    mlClientId: process.env.ML_CLIENT_ID,
+    mlClientSecret: process.env.ML_CLIENT_SECRET,
+    publicBaseUrl: process.env.PUBLIC_BASE_URL,
+    uazapiHost: process.env.UAZAPI_HOST,
+  };
+  const raw = map[key];
+  if (!raw) return undefined;
+  return parse(key, raw);
+}
+
+export async function getSettings(): Promise<Settings> {
+  return load();
+}
+
+export async function getSetting<K extends SettingKey>(key: K): Promise<Value<K>> {
+  return (await load())[key];
+}
+
+export async function setSettings(patch: Partial<Record<SettingKey, unknown>>) {
+  const entries = Object.entries(patch).filter(([k]) => k in SETTINGS_SCHEMA);
+  await prisma.$transaction(
+    entries.map(([key, value]) =>
+      prisma.setting.upsert({
+        where: { key },
+        create: { key, value: String(value) },
+        update: { value: String(value) },
+      }),
+    ),
+  );
+  bust(TAGS.settings);
+}
