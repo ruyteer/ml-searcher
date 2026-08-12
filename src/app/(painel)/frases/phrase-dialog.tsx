@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { CategoryCombobox } from "./category-combobox";
-import { createPhrase, updatePhrase, INITIAL_ACTION_STATE } from "./actions";
+import { createPhrase, updatePhrase } from "./actions";
+import { INITIAL_ACTION_STATE } from "./action-state";
 import type { Phrase } from "@/generated/prisma";
 
 export interface PhraseDialogProps {

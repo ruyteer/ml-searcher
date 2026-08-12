@@ -25,7 +25,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { LinkKind } from "@/generated/prisma";
-import { createStandaloneLinkAction, initialActionState } from "./actions";
+import { createStandaloneLinkAction } from "./actions";
+import { initialActionState } from "./action-state";
 
 function SubmitButton() {
   const { pending } = useFormStatus();

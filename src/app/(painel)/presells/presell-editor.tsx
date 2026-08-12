@@ -14,7 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { fromCents } from "@/lib/format";
 import { LinkPicker } from "./link-picker";
 import { PresellPreview } from "./presell-preview";
-import { upsertPresellAction, checkSlugAvailableAction, slugifyAction, initialActionState } from "./actions";
+import { upsertPresellAction, checkSlugAvailableAction, slugifyAction } from "./actions";
+import { initialActionState } from "./action-state";
 import type { EligibleLink, PresellForEdit } from "@/lib/data/presells";
 
 interface PresellEditorProps {

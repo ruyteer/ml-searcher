@@ -42,8 +42,20 @@ function withCascades(tags: Tag[]): Tag[] {
 /// Use DENTRO de Server Actions. O Next 16 garante leitura-após-escrita:
 /// a mesma requisição que gravou já enxerga o dado novo, sem flash de
 /// conteúdo velho ao voltar para a listagem.
+///
+/// updateTag só é permitido dentro de uma Server Action; chamada de qualquer
+/// outro contexto ela lança. Como a gravação já aconteceu quando chegamos
+/// aqui, deixar a exceção subir transformaria uma escrita bem-sucedida em
+/// erro na cara do usuário. Então caímos para revalidateTag, que vale em
+/// qualquer contexto e só abre mão da leitura-após-escrita.
 export function bust(...tags: Tag[]) {
-  for (const tag of withCascades(tags)) updateTag(tag);
+  for (const tag of withCascades(tags)) {
+    try {
+      updateTag(tag);
+    } catch {
+      revalidateTag(tag, { expire: 0 });
+    }
+  }
 }
 
 /// Use FORA de Server Actions (route handlers, cron, webhooks), onde

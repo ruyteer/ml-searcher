@@ -29,8 +29,8 @@ import {
   duplicateTemplate,
   setDefaultTemplate,
   updateTemplate,
-  INITIAL_ACTION_STATE,
 } from "./actions";
+import { INITIAL_ACTION_STATE } from "./action-state";
 
 export interface TemplatesManagerProps {
   templates: MessageTemplate[];

@@ -6,13 +6,7 @@ import { createLink } from "@/lib/links";
 import { TAGS, bust } from "@/lib/cache";
 import { LinkKind } from "@/generated/prisma";
 
-export interface ActionState {
-  error?: string;
-  fieldErrors?: Record<string, string[]>;
-  success?: boolean;
-}
-
-export const initialActionState: ActionState = {};
+import type { ActionState } from "./action-state";
 
 // -------------------------------------------------------------- novo link
 
