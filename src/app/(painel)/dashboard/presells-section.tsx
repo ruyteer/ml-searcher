@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileText } from "lucide-react";
+import { IconDocumento } from "@/components/icons";
 import { Section } from "@/components/shell/section";
 import { EmptyState } from "@/components/shell/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,7 @@ export async function PresellsSection() {
   return (
     <Section title="Pre-sells com mais views" description="Top 10 por visualizações.">
       {presells.length === 0 ? (
-        <EmptyState icon={FileText} title="Nenhuma pre-sell criada ainda" className="border-none py-10" />
+        <EmptyState icon={IconDocumento} title="Nenhuma pre-sell criada ainda" className="border-none py-10" />
       ) : (
         <Table>
           <TableHeader>

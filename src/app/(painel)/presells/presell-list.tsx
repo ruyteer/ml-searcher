@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { FileText } from "lucide-react";
+import { IconDocumento } from "@/components/icons";
 import { EmptyState } from "@/components/shell/empty-state";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -18,7 +18,7 @@ export async function PresellList() {
   if (presells.length === 0) {
     return (
       <EmptyState
-        icon={FileText}
+        icon={IconDocumento}
         title="Nenhuma pre-sell criada ainda"
         description="Crie uma página de pre-sell pra aquecer o clique antes de mandar pro Mercado Livre."
         action={

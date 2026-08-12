@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { RefreshCw, Loader2 } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { RefreshIcon, Loading03Icon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -93,7 +94,7 @@ export function ScrapePanel() {
         connect(null);
       } else if (res.status === 409) {
         const data = await res.json().catch(() => ({}));
-        toast.info("Já existe uma varredura em andamento — acompanhando.");
+        toast.info("Já existe uma varredura em andamento, acompanhando.");
         connect(data.runId ?? null);
       } else {
         const data = await res.json().catch(() => ({}));
@@ -109,7 +110,11 @@ export function ScrapePanel() {
   return (
     <>
       <Button onClick={handleStart} disabled={starting}>
-        {starting ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+        {starting ? (
+          <HugeiconsIcon icon={Loading03Icon} size={14} strokeWidth={1.5} className="animate-spin" />
+        ) : (
+          <HugeiconsIcon icon={RefreshIcon} size={14} strokeWidth={1.5} />
+        )}
         Buscar ofertas
       </Button>
 

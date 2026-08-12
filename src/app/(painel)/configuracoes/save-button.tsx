@@ -1,7 +1,8 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
-import { Loader2 } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { IconCarregando } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import type { ComponentProps, ReactNode } from "react";
 
@@ -17,7 +18,7 @@ export function SaveButton({ label = "Salvar", pendingLabel = "Salvando...", chi
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending} {...props}>
-      {pending && <Loader2 className="size-3.5 animate-spin" />}
+      {pending && <HugeiconsIcon icon={IconCarregando} size={14} strokeWidth={1.8} className="animate-spin" aria-hidden="true" />}
       {pending ? pendingLabel : (children ?? label)}
     </Button>
   );

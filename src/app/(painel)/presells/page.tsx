@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { IconAdicionar } from "@/components/icons";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { PresellList } from "./presell-list";
@@ -14,7 +15,7 @@ export default function PresellsPage() {
         description="Páginas intermediárias que aquecem o clique antes de mandar pro Mercado Livre."
         actions={
           <Button render={<Link href="/presells/novo" />}>
-            <Plus /> Nova pre-sell
+            <HugeiconsIcon icon={IconAdicionar} size={16} strokeWidth={1.8} aria-hidden="true" /> Nova pre-sell
           </Button>
         }
       />

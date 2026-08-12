@@ -32,7 +32,7 @@ export default async function LinksPage({ searchParams }: LinksPageProps) {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Links"
-        description="Todos os links gerados — de produtos ou avulsos — e o desempenho de cada um."
+        description="Todos os links gerados, de produtos ou avulsos, e o desempenho de cada um."
         actions={<NewLinkDialog />}
       />
 

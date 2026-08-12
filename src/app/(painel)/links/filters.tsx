@@ -1,7 +1,8 @@
 "use client";
 
 import { useQueryStates, debounce } from "nuqs";
-import { Search, X } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { IconBuscar, IconFechar } from "@/components/icons";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,7 +48,7 @@ export function LinkFilters() {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
       <div className="relative flex-1 sm:min-w-56">
-        <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+        <HugeiconsIcon icon={IconBuscar} size={16} strokeWidth={1.6} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
         <Input
           placeholder="Buscar por slug ou produto..."
           defaultValue={state.q}
@@ -105,7 +106,7 @@ export function LinkFilters() {
           size="sm"
           onClick={() => setState({ kind: null, active: null, q: null, period: null })}
         >
-          <X className="size-3.5" />
+          <HugeiconsIcon icon={IconFechar} size={14} strokeWidth={1.8} aria-hidden="true" />
           Limpar
         </Button>
       )}

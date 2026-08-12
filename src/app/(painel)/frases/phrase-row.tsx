@@ -2,7 +2,15 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { CopyPlus, Loader2, Pencil, Trash2, ClipboardCopy } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  CheckmarkCircle02Icon,
+  Copy01Icon,
+  CopyPlusIcon,
+  Delete02Icon,
+  Edit02Icon,
+  Loading03Icon,
+} from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -17,18 +25,26 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { getCategoryLabel } from "@/lib/frases-labels";
 import type { Phrase } from "@/generated/prisma";
 import { deletePhrase, duplicatePhrase, setPhraseActive } from "./actions";
 
 export interface PhraseRowProps {
   phrase: Phrase;
   onEdit: () => void;
+  /// Esconde o selo de categoria quando a lista já está filtrada por uma
+  /// categoria só, pra não repetir a mesma informação em toda linha.
+  showCategory?: boolean;
 }
 
-export function PhraseRow({ phrase, onEdit }: PhraseRowProps) {
+/// Linha compacta de uma frase: uma por linha, ações só aparecem no hover ou
+/// foco. Pensado para telas com dezenas ou centenas de frases, onde um card
+/// por item não escala. Clicar no texto já copia a frase.
+export function PhraseRow({ phrase, onEdit, showCategory = true }: PhraseRowProps) {
   const [isPending, startTransition] = useTransition();
   // Switch otimista: reflete o novo estado na hora, sem esperar o roundtrip.
   const [active, setActive] = useState(phrase.active);
+  const [copied, setCopied] = useState(false);
 
   function toggleActive(next: boolean) {
     setActive(next);
@@ -43,7 +59,11 @@ export function PhraseRow({ phrase, onEdit }: PhraseRowProps) {
 
   function copy() {
     navigator.clipboard.writeText(phrase.text).then(
-      () => toast.success("Frase copiada."),
+      () => {
+        setCopied(true);
+        toast.success("Frase copiada.");
+        window.setTimeout(() => setCopied(false), 1500);
+      },
       () => toast.error("Não foi possível copiar."),
     );
   }
@@ -65,19 +85,37 @@ export function PhraseRow({ phrase, onEdit }: PhraseRowProps) {
   }
 
   return (
-    <div className="flex items-center gap-3 py-2.5">
-      <Switch checked={active} onCheckedChange={toggleActive} disabled={isPending} aria-label="Frase ativa" />
-      <div className="min-w-0 flex-1">
-        <p className={cn("truncate text-sm", active ? "text-foreground" : "text-muted-foreground line-through")}>
+    <div className="group/row relative flex min-w-0 items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-muted/60 focus-within:bg-muted/60">
+      <Switch
+        size="sm"
+        checked={active}
+        onCheckedChange={toggleActive}
+        disabled={isPending}
+        aria-label="Frase ativa"
+        className="shrink-0"
+      />
+      <button
+        type="button"
+        onClick={copy}
+        title="Clique para copiar a frase"
+        className="min-w-0 flex-1 rounded px-1 py-0.5 text-left"
+      >
+        <span className={cn("block truncate text-sm", active ? "text-foreground" : "text-muted-foreground line-through")}>
           {phrase.text}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          usada {phrase.usageCount} {phrase.usageCount === 1 ? "vez" : "vezes"}
-        </p>
-      </div>
-      <div className="flex shrink-0 items-center gap-0.5">
+        </span>
+      </button>
+      {showCategory && (
+        <span className="hidden shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground sm:inline">
+          {getCategoryLabel(phrase.category)}
+        </span>
+      )}
+      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
         <Button type="button" variant="ghost" size="icon-sm" onClick={copy} aria-label="Copiar" title="Copiar">
-          <ClipboardCopy className="size-3.5" />
+          {copied ? (
+            <HugeiconsIcon icon={CheckmarkCircle02Icon} size={14} strokeWidth={1.5} className="text-primary" />
+          ) : (
+            <HugeiconsIcon icon={Copy01Icon} size={14} strokeWidth={1.5} />
+          )}
         </Button>
         <Button
           type="button"
@@ -88,7 +126,7 @@ export function PhraseRow({ phrase, onEdit }: PhraseRowProps) {
           aria-label="Duplicar"
           title="Duplicar"
         >
-          <CopyPlus className="size-3.5" />
+          <HugeiconsIcon icon={CopyPlusIcon} size={14} strokeWidth={1.5} />
         </Button>
         <Button
           type="button"
@@ -99,7 +137,7 @@ export function PhraseRow({ phrase, onEdit }: PhraseRowProps) {
           aria-label="Editar"
           title="Editar"
         >
-          <Pencil className="size-3.5" />
+          <HugeiconsIcon icon={Edit02Icon} size={14} strokeWidth={1.5} />
         </Button>
         <AlertDialog>
           <AlertDialogTrigger
@@ -114,7 +152,11 @@ export function PhraseRow({ phrase, onEdit }: PhraseRowProps) {
               />
             }
           >
-            {isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+            {isPending ? (
+              <HugeiconsIcon icon={Loading03Icon} size={14} strokeWidth={1.5} className="animate-spin" />
+            ) : (
+              <HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={1.5} />
+            )}
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>

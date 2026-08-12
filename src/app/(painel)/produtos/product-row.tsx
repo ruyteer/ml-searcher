@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Ban, CheckCircle2, ExternalLink, Loader2, MousePointerClick } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ShieldBanIcon, CheckmarkCircle02Icon, ExternalLinkIcon, Loading03Icon, MouseLeftClick01Icon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -88,7 +89,7 @@ export function ProductRow({ product, presells }: { product: ProductListItem; pr
         <TableCell>{formatBRL(product.lowestPrice)}</TableCell>
         <TableCell>
           {product.variationPct === null ? (
-            <span className="text-muted-foreground">—</span>
+            <span className="text-muted-foreground">-</span>
           ) : (
             <span
               className={cn(
@@ -100,9 +101,9 @@ export function ProductRow({ product, presells }: { product: ProductListItem; pr
             </span>
           )}
         </TableCell>
-        <TableCell className="max-w-32 truncate">{product.sellerName ?? "—"}</TableCell>
+        <TableCell className="max-w-32 truncate">{product.sellerName ?? "-"}</TableCell>
         <TableCell>{product.soldQuantity.toLocaleString("pt-BR")}</TableCell>
-        <TableCell className="max-w-32 truncate">{product.watchLabel ?? product.categoryName ?? "—"}</TableCell>
+        <TableCell className="max-w-32 truncate">{product.watchLabel ?? product.categoryName ?? "-"}</TableCell>
         <TableCell>{formatDateTime(product.lastSeenAt)}</TableCell>
       </TableRow>
 
@@ -121,7 +122,7 @@ export function ProductRow({ product, presells }: { product: ProductListItem; pr
           <div className="flex flex-col gap-4 p-4">
             {loading || !detail ? (
               <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" /> Carregando detalhe...
+                <HugeiconsIcon icon={Loading03Icon} size={16} strokeWidth={1.5} className="animate-spin" /> Carregando detalhe...
               </div>
             ) : (
               <>
@@ -130,7 +131,7 @@ export function ProductRow({ product, presells }: { product: ProductListItem; pr
                 <div className="flex flex-wrap items-center gap-1.5">
                   <a href={detail.permalink} target="_blank" rel="noreferrer">
                     <Button variant="outline" size="xs">
-                      <ExternalLink /> Abrir no Mercado Livre
+                      <HugeiconsIcon icon={ExternalLinkIcon} size={13} strokeWidth={1.5} /> Abrir no Mercado Livre
                     </Button>
                   </a>
                   <GenerateLinkMenu productId={detail.id} presells={presells} size="xs" />
@@ -140,7 +141,13 @@ export function ProductRow({ product, presells }: { product: ProductListItem; pr
                     disabled={isPending}
                     onClick={toggleBlock}
                   >
-                    {isPending ? <Loader2 className="animate-spin" /> : blocked ? <CheckCircle2 /> : <Ban />}
+                    {isPending ? (
+                      <HugeiconsIcon icon={Loading03Icon} size={13} strokeWidth={1.5} className="animate-spin" />
+                    ) : blocked ? (
+                      <HugeiconsIcon icon={CheckmarkCircle02Icon} size={13} strokeWidth={1.5} />
+                    ) : (
+                      <HugeiconsIcon icon={ShieldBanIcon} size={13} strokeWidth={1.5} />
+                    )}
                     {blocked ? "Desbloquear" : "Bloquear"}
                   </Button>
                 </div>
@@ -246,7 +253,7 @@ export function ProductRow({ product, presells }: { product: ProductListItem; pr
                               <Badge variant="outline" className="text-[10px]">
                                 {LINK_KIND_LABEL[link.kind] ?? link.kind}
                               </Badge>
-                              <MousePointerClick className="size-3" /> {link.clickCount}
+                              <HugeiconsIcon icon={MouseLeftClick01Icon} size={12} strokeWidth={1.5} /> {link.clickCount}
                             </span>
                           </div>
                           <CopyButton size="icon-sm" label="" getUrl={() => link.url} />

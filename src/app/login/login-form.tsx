@@ -1,10 +1,11 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
-import { Loader2, Lock } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { IconCarregando, IconSenha } from "@/components/icons";
 import { loginAction } from "./actions";
 
 function SubmitButton() {
@@ -13,7 +14,13 @@ function SubmitButton() {
     <Button type="submit" className="w-full" size="lg" disabled={pending}>
       {pending ? (
         <>
-          <Loader2 className="size-4 animate-spin" />
+          <HugeiconsIcon
+            icon={IconCarregando}
+            size={16}
+            strokeWidth={2}
+            className="animate-spin"
+            aria-hidden="true"
+          />
           Entrando...
         </>
       ) : (
@@ -29,7 +36,13 @@ export function LoginForm({ hasError }: { hasError: boolean }) {
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="password">Senha</Label>
         <div className="relative">
-          <Lock className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <HugeiconsIcon
+            icon={IconSenha}
+            size={16}
+            strokeWidth={1.8}
+            className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
           <Input
             id="password"
             name="password"

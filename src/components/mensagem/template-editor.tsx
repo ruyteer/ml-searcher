@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef } from "react";
-import { AlertTriangle } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Alert02Icon } from "@hugeicons/core-free-icons";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -95,9 +96,9 @@ export function TemplateEditor({
 
       {unknownVars.length > 0 && (
         <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-2.5 py-2 text-xs text-warning">
-          <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+          <HugeiconsIcon icon={Alert02Icon} size={14} strokeWidth={1.5} className="mt-0.5 shrink-0" />
           <span>
-            Variável desconhecida: {unknownVars.map((v) => `{{${v}}}`).join(", ")} — ela não será
+            Variável desconhecida: {unknownVars.map((v) => `{{${v}}}`).join(", ")}. Ela não será
             substituída ao enviar.
           </span>
         </div>

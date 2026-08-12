@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ScanSearch } from "lucide-react";
+import { IconVarredura } from "@/components/icons";
 import type { RunStatus } from "@/generated/prisma";
 import { Section } from "@/components/shell/section";
 import { EmptyState } from "@/components/shell/empty-state";
@@ -47,7 +47,7 @@ export async function LatestRunSection() {
       className="h-full"
     >
       {!latest ? (
-        <EmptyState icon={ScanSearch} title="Nenhuma varredura ainda" className="border-none py-10" />
+        <EmptyState icon={IconVarredura} title="Nenhuma varredura ainda" className="border-none py-10" />
       ) : (
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2">

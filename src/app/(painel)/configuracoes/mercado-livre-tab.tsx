@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { Eye, EyeOff, Info, CheckCircle2, XCircle } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { IconVer, IconOcultar, IconInfo, IconSucesso, IconErroCirculo } from "@/components/icons";
 import { Section } from "@/components/shell/section";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -27,14 +28,14 @@ interface MercadoLivreTabProps {
 /// Sites do Mercado Livre suportados pela API de client_credentials. A lista
 /// em si é fixa (definida pelo próprio ML), o que muda é a escolha, salva em settings.mlSiteId.
 const ML_SITES = [
-  { value: "MLB", label: "MLB — Brasil" },
-  { value: "MLA", label: "MLA — Argentina" },
-  { value: "MLM", label: "MLM — México" },
-  { value: "MCO", label: "MCO — Colômbia" },
-  { value: "MLC", label: "MLC — Chile" },
-  { value: "MPE", label: "MPE — Peru" },
-  { value: "MLU", label: "MLU — Uruguai" },
-  { value: "MEC", label: "MEC — Equador" },
+  { value: "MLB", label: "MLB (Brasil)" },
+  { value: "MLA", label: "MLA (Argentina)" },
+  { value: "MLM", label: "MLM (México)" },
+  { value: "MCO", label: "MCO (Colômbia)" },
+  { value: "MLC", label: "MLC (Chile)" },
+  { value: "MPE", label: "MPE (Peru)" },
+  { value: "MLU", label: "MLU (Uruguai)" },
+  { value: "MEC", label: "MEC (Equador)" },
 ];
 
 export function MercadoLivreTab({ settings }: MercadoLivreTabProps) {
@@ -65,11 +66,11 @@ export function MercadoLivreTab({ settings }: MercadoLivreTabProps) {
   return (
     <Section
       title="Mercado Livre"
-      description="Credenciais da API oficial do Mercado Livre — sem elas, o sistema roda com produtos de exemplo."
+      description="Credenciais da API oficial do Mercado Livre. Sem elas, o sistema roda com produtos de exemplo."
     >
       <div className="flex flex-col gap-5">
         {demoMode && (
-          <AlertBox icon={Info} variant="warning" title="Modo demonstração ativo">
+          <AlertBox icon={IconInfo} variant="warning" title="Modo demonstração ativo">
             <p>
               Sem credenciais preenchidas, o sistema está rodando em <b>MODO DEMONSTRAÇÃO</b>, mostrando
               produtos de exemplo em vez de ofertas reais do Mercado Livre.
@@ -83,7 +84,7 @@ export function MercadoLivreTab({ settings }: MercadoLivreTabProps) {
                 .
               </li>
               <li>Copie o App ID e a Secret Key gerados para a sua aplicação.</li>
-              <li>Cole os dois campos abaixo e salve — a próxima varredura já busca ofertas reais.</li>
+              <li>Cole os dois campos abaixo e salve: a próxima varredura já busca ofertas reais.</li>
             </ol>
           </AlertBox>
         )}
@@ -103,7 +104,7 @@ export function MercadoLivreTab({ settings }: MercadoLivreTabProps) {
               <Label htmlFor="mlSiteId">Site</Label>
               <Select name="mlSiteId" value={siteId} onValueChange={(v) => setSiteId(v ?? "MLB")}>
                 <SelectTrigger id="mlSiteId" className="w-full">
-                  <SelectValue placeholder="MLB — Brasil" />
+                  <SelectValue placeholder="MLB (Brasil)" />
                 </SelectTrigger>
                 <SelectContent>
                   {ML_SITES.map((site) => (
@@ -113,7 +114,7 @@ export function MercadoLivreTab({ settings }: MercadoLivreTabProps) {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">Padrão: MLB — Brasil.</p>
+              <p className="text-xs text-muted-foreground">Padrão: MLB (Brasil).</p>
             </div>
           </div>
 
@@ -136,7 +137,11 @@ export function MercadoLivreTab({ settings }: MercadoLivreTabProps) {
                 className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 aria-label={showSecret ? "Ocultar secret" : "Mostrar secret"}
               >
-                {showSecret ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                {showSecret ? (
+                  <HugeiconsIcon icon={IconOcultar} size={16} strokeWidth={1.6} aria-hidden="true" />
+                ) : (
+                  <HugeiconsIcon icon={IconVer} size={16} strokeWidth={1.6} aria-hidden="true" />
+                )}
               </button>
             </div>
             {state.errors?.mlClientSecret?.[0] ? (
@@ -165,9 +170,9 @@ export function MercadoLivreTab({ settings }: MercadoLivreTabProps) {
               className={`flex items-center gap-1.5 text-xs ${testState.ok ? "text-success" : "text-danger"}`}
             >
               {testState.ok ? (
-                <CheckCircle2 className="size-3.5 shrink-0" />
+                <HugeiconsIcon icon={IconSucesso} size={14} strokeWidth={1.6} className="shrink-0" aria-hidden="true" />
               ) : (
-                <XCircle className="size-3.5 shrink-0" />
+                <HugeiconsIcon icon={IconErroCirculo} size={14} strokeWidth={1.6} className="shrink-0" aria-hidden="true" />
               )}
               {testState.message}
             </p>

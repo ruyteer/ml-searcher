@@ -1,4 +1,4 @@
-import { Tag, Percent, Flame, Boxes } from "lucide-react";
+import { IconOfertas, IconDesconto, IconEmAlta, IconEstoque } from "@/components/icons";
 import { StatCard } from "@/components/shell/stat-card";
 import { getOfferStats } from "@/lib/data/offers";
 
@@ -9,10 +9,14 @@ export async function OffersStats() {
 
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <StatCard label="Ofertas novas hoje" value={stats.newToday.toLocaleString("pt-BR")} icon={Tag} />
-      <StatCard label="Desconto médio" value={`${stats.avgDiscount}%`} icon={Percent} />
-      <StatCard label="Melhor desconto" value={`${stats.bestDiscount}%`} icon={Flame} />
-      <StatCard label="Total monitorado" value={stats.totalMonitored.toLocaleString("pt-BR")} icon={Boxes} />
+      <StatCard label="Ofertas novas hoje" value={stats.newToday.toLocaleString("pt-BR")} icon={IconOfertas} />
+      <StatCard label="Desconto médio" value={`${stats.avgDiscount}%`} icon={IconDesconto} />
+      <StatCard label="Melhor desconto" value={`${stats.bestDiscount}%`} icon={IconEmAlta} />
+      <StatCard
+        label="Total monitorado"
+        value={stats.totalMonitored.toLocaleString("pt-BR")}
+        icon={IconEstoque}
+      />
     </div>
   );
 }

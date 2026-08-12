@@ -2,6 +2,7 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { TAGS } from "@/lib/cache";
+import { CATEGORY_ORDER } from "@/lib/frases-labels";
 import type { Phrase, MessageTemplate } from "@/generated/prisma";
 
 // ------------------------------------------------------------------ phrases
@@ -20,10 +21,6 @@ export interface PhraseGroup {
   category: string;
   phrases: Phrase[];
 }
-
-/// Ordem preferida das categorias que já vêm no seed. Categorias novas
-/// (criadas pelo usuário via Combobox) aparecem depois, em ordem alfabética.
-const CATEGORY_ORDER = ["abertura", "urgencia", "cta", "emoji", "geral"];
 
 function categoryRank(category: string): number {
   const idx = CATEGORY_ORDER.indexOf(category);

@@ -10,8 +10,8 @@ export interface SectionProps {
   contentClassName?: string;
 }
 
-/// Bloco de card com título/descrição/ações opcionais + conteúdo — a unidade
-/// básica de composição das páginas do painel (tabelas, gráficos, formulários).
+/// Bloco de card com título, descrição e ações opcionais mais o conteúdo. É a
+/// unidade básica das páginas do painel (tabelas, gráficos, formulários).
 export function Section({
   title,
   description,

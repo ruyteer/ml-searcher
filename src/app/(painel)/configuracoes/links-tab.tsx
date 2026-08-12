@@ -1,10 +1,12 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { AlertTriangle, Link2 } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { IconAlerta, IconLinks } from "@/components/icons";
 import { Section } from "@/components/shell/section";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { UrlInput } from "@/components/form/url-input";
 import { Field } from "./field";
 import { AlertBox } from "./alert-box";
 import { SaveButton } from "./save-button";
@@ -94,14 +96,13 @@ export function LinksTab({ settings }: LinksTabProps) {
     <div className="flex flex-col gap-4">
       <form action={domainAction}>
         <Section title="Domínio dos links" description="De onde saem os links curtos que o painel gera.">
-          <Field
+          <UrlInput
             label="Domínio público"
             name="publicBaseUrl"
-            type="url"
             placeholder="https://seudominio.com.br"
             value={domain}
             onValueChange={setDomain}
-            help="Deixe vazio para usar o domínio atual. Preencha quando apontar um domínio próprio."
+            hint="Deixe vazio para usar o domínio atual. Preencha quando apontar um domínio próprio."
             error={domainState.errors?.publicBaseUrl?.[0]}
           />
           <div className="mt-4 flex items-center gap-3 border-t border-border pt-4">
@@ -154,8 +155,8 @@ export function LinksTab({ settings }: LinksTabProps) {
             </div>
 
             {missingTool && (
-              <AlertBox icon={AlertTriangle} variant="warning">
-                Programa de afiliados ligado sem a tag (tool) preenchida — os links vão sair sem a tag de
+              <AlertBox icon={IconAlerta} variant="warning">
+                Programa de afiliados ligado sem a tag (tool) preenchida. Os links vão sair sem a tag de
                 afiliado até você preencher esse campo.
               </AlertBox>
             )}
@@ -171,14 +172,14 @@ export function LinksTab({ settings }: LinksTabProps) {
       <Section title="Prévia" description="Como um link de exemplo fica com as configurações acima (ainda não salvas).">
         <div className="flex flex-col gap-3 rounded-lg bg-muted/40 p-3 font-mono text-xs">
           <div className="flex items-start gap-2">
-            <Link2 className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+            <HugeiconsIcon icon={IconLinks} size={14} strokeWidth={1.6} className="mt-0.5 shrink-0 text-muted-foreground" aria-hidden="true" />
             <div className="flex flex-col gap-0.5 break-all">
               <span className="text-muted-foreground">Link curto (copiável no painel):</span>
               <span>{preview.trackedUrl}</span>
             </div>
           </div>
           <div className="flex items-start gap-2">
-            <Link2 className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+            <HugeiconsIcon icon={IconLinks} size={14} strokeWidth={1.6} className="mt-0.5 shrink-0 text-muted-foreground" aria-hidden="true" />
             <div className="flex flex-col gap-0.5 break-all">
               <span className="text-muted-foreground">Destino final:</span>
               <span>{preview.destino}</span>

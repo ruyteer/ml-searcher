@@ -5,8 +5,8 @@ import { useLinkStatus } from "next/link";
 
 /// Precisa ser renderizado como filho de um <Link>. Enquanto a navegação
 /// desse link está pendente, marca <html data-navigating> para acender a
-/// barra de progresso do topo (ver .nav-progress-bar em globals.css) —
-/// feedback imediato para a troca de página parecer instantânea.
+/// barra de progresso do topo (ver .nav-progress-bar em globals.css). É o
+/// feedback imediato que faz a troca de página parecer instantânea.
 export function LinkPendingSignal() {
   const { pending } = useLinkStatus();
 

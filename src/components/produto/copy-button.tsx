@@ -1,7 +1,8 @@
 "use client";
 
 import { useTransition } from "react";
-import { Copy, Loader2 } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Copy01Icon, Loading03Icon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -45,7 +46,11 @@ export function CopyButton({
 
   return (
     <Button variant={variant} size={size} className={cn(className)} onClick={handleClick} disabled={isPending}>
-      {isPending ? <Loader2 className="animate-spin" /> : <Copy />}
+      {isPending ? (
+        <HugeiconsIcon icon={Loading03Icon} size={14} strokeWidth={1.5} className="animate-spin" />
+      ) : (
+        <HugeiconsIcon icon={Copy01Icon} size={14} strokeWidth={1.5} />
+      )}
       {!isIcon && label}
     </Button>
   );

@@ -25,7 +25,7 @@ export default async function ConfiguracoesPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Configurações"
-        description="Tudo que controla o comportamento do sistema — desconto mínimo, categorias monitoradas, links e credenciais do Mercado Livre. Nada aqui fica fixo no código."
+        description="Tudo que controla o comportamento do sistema: desconto mínimo, categorias monitoradas, links e credenciais do Mercado Livre. Nada aqui fica fixo no código."
       />
       <ConfiguracoesTabs settings={publicSettings} watches={watches} defaults={defaults} />
     </div>

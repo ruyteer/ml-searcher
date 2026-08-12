@@ -22,9 +22,8 @@ export interface MLShipping {
   free_shipping?: boolean;
 }
 
-/// Item de /sites/{site}/search e de /items/{id}. Os dois endpoints devolvem
-/// o mesmo shape para os campos que usamos, mas a busca costuma omitir
-/// `sold_quantity` — por isso quase tudo aqui é opcional.
+/// Anúncio de /items/{id} e do multiget /items?ids=. Quase tudo é opcional
+/// porque nem todo endpoint devolve o conjunto completo de campos.
 export interface MLItem {
   id: string;
   title: string;
@@ -51,13 +50,6 @@ export interface MLPaging {
   offset: number;
   limit: number;
   primary_results?: number;
-}
-
-export interface MLSearchResponse {
-  site_id: string;
-  query?: string | null;
-  paging: MLPaging;
-  results: MLItem[];
 }
 
 /// Resposta do multiget /items?ids=A,B,C
@@ -128,6 +120,38 @@ export interface MLCatalogProduct {
   permalink?: string | null;
   pictures?: MLProductPicture[] | null;
   buy_box_winner?: { item_id?: string | null; price?: number | null } | null;
+}
+
+/// Item de /products/search. É um produto de CATÁLOGO, não um anúncio: já vem
+/// com nome, fotos e domínio, mas `buy_box_winner` vem sempre null, ou seja,
+/// não há preço aqui. O preço sai de /products/{id}/items.
+export interface MLCatalogSearchItem {
+  id: string;
+  catalog_product_id?: string | null;
+  domain_id?: string | null;
+  name: string;
+  status?: string | null;
+  pictures?: MLProductPicture[] | null;
+  children_ids?: string[] | null;
+  tags?: string[] | null;
+  date_created?: string | null;
+}
+
+/// Paginação de /products/search. Diferente de MLPaging, traz `last` e NÃO
+/// tem o teto de offset 1000 que a busca de anúncios tinha.
+export interface MLProductSearchPaging {
+  total: number;
+  limit: number;
+  offset: number;
+  last?: string | null;
+}
+
+/// Resposta de /products/search?status=active&site_id=MLB&q=...
+export interface MLProductSearchResponse {
+  keywords?: string | null;
+  query_type?: string | null;
+  paging: MLProductSearchPaging;
+  results: MLCatalogSearchItem[];
 }
 
 /// Um anúncio de /products/{catalogId}/items. Note que NÃO traz título,

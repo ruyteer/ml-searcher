@@ -1,0 +1,2 @@
+Vi que uma das API's está retornando forbidden. 
+Tente buscar na internet o motivo, pois pode ser permissão. Me guie inclusive para tentar identificar a causa de estar forbidden. Procure em foruns, na internet, nas docs do mercado livre. Mas encontre o motivo exato, não faça suposições. 

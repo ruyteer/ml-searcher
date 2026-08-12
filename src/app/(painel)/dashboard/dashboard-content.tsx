@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { SearchX } from "lucide-react";
+import { IconSemResultado } from "@/components/icons";
 import { EmptyState } from "@/components/shell/empty-state";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -25,7 +25,7 @@ export async function DashboardContent({ period }: { period: Period }) {
   if (!hasData) {
     return (
       <EmptyState
-        icon={SearchX}
+        icon={IconSemResultado}
         title="Ainda não há dados no painel"
         description="O banco está recém-criado. Rode a primeira varredura em Ofertas para começar a coletar produtos, ofertas e cliques."
         action={
