@@ -2,7 +2,8 @@
 
 import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
-import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { IconSucesso, IconInfo, IconAlerta, IconErroCirculo, IconCarregando } from "@/components/icons"
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme()
@@ -13,19 +14,19 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group"
       icons={{
         success: (
-          <CircleCheckIcon className="size-4" />
+          <HugeiconsIcon icon={IconSucesso} size={16} strokeWidth={1.6} aria-hidden="true" />
         ),
         info: (
-          <InfoIcon className="size-4" />
+          <HugeiconsIcon icon={IconInfo} size={16} strokeWidth={1.6} aria-hidden="true" />
         ),
         warning: (
-          <TriangleAlertIcon className="size-4" />
+          <HugeiconsIcon icon={IconAlerta} size={16} strokeWidth={1.6} aria-hidden="true" />
         ),
         error: (
-          <OctagonXIcon className="size-4" />
+          <HugeiconsIcon icon={IconErroCirculo} size={16} strokeWidth={1.6} aria-hidden="true" />
         ),
         loading: (
-          <Loader2Icon className="size-4 animate-spin" />
+          <HugeiconsIcon icon={IconCarregando} size={16} strokeWidth={1.6} className="animate-spin" aria-hidden="true" />
         ),
       }}
       style={

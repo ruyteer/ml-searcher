@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronsLeft, ChevronsRight, Search } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { IconExpandir, IconMarca, IconRecolher } from "@/components/icons";
 import { NAV_ITEMS } from "./nav-items";
 import { NavLink } from "./nav-link";
 import { useSidebar } from "./sidebar-context";
 
-/// Sidebar fixa à esquerda no desktop. No mobile ela não é renderizada —
+/// Sidebar fixa à esquerda no desktop. No mobile ela não é renderizada:
 /// a navegação mobile vive em <MobileNav /> (Sheet), montada pelo topbar.
 export function AppSidebar() {
   const { collapsed, toggleCollapsed } = useSidebar();
@@ -25,15 +26,15 @@ export function AppSidebar() {
         href="/dashboard"
         prefetch
         className={cn(
-          "flex h-14 items-center gap-2 border-b border-sidebar-border px-4",
+          "flex h-14 items-center gap-2.5 border-b border-sidebar-border px-4 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
           collapsed && "justify-center px-0"
         )}
       >
         <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
-          <Search className="size-3.5" />
+          <HugeiconsIcon icon={IconMarca} size={15} strokeWidth={2.2} aria-hidden="true" />
         </div>
         {!collapsed && (
-          <span className="truncate text-sm font-semibold text-sidebar-foreground">
+          <span className="truncate font-heading text-sm font-semibold tracking-tight text-sidebar-foreground">
             ML Searcher
           </span>
         )}
@@ -52,9 +53,15 @@ export function AppSidebar() {
           variant="ghost"
           size="sm"
           onClick={toggleCollapsed}
+          aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
           className={cn("w-full text-muted-foreground", collapsed && "justify-center px-0")}
         >
-          {collapsed ? <ChevronsRight className="size-4" /> : <ChevronsLeft className="size-4" />}
+          <HugeiconsIcon
+            icon={collapsed ? IconExpandir : IconRecolher}
+            size={16}
+            strokeWidth={1.8}
+            aria-hidden="true"
+          />
           {!collapsed && "Recolher"}
         </Button>
       </div>

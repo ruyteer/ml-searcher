@@ -16,29 +16,47 @@ datasource db {
 /// Categoria/keyword monitorada. O scraper varre uma destas por vez.
 model Watch {
   id         String    @id @default(cuid())
-  /// Rótulo exibido no painel, ex. "Máquinas de cortar cabelo"
+  /// Rótulo exibido no painel, ex. "Barbearia"
   label      String
-  /// ID de categoria do ML (ex. MLB264724). Nulo quando a busca é só por termo.
-  categoryId String?
-  /// Termo de busca livre. Nulo quando a busca é só por categoria.
+  /// ID de categoria do ML (ex. MLB264787). Nulo quando a busca é só por termo.
+  categoryId String?   @unique
+  /// Termo de busca livre, usado em /products/search.
   query      String?
+  /// Domínio de produto do ML (ex. MLB-RAZOR_BLADES). Quando preenchido,
+  /// restringe a busca por termo ao domínio, o que derruba drasticamente o
+  /// número de candidatos fora do nicho.
+  domainId   String?
   enabled    Boolean   @default(true)
   /// Sobrescreve o desconto mínimo global só para esta watch.
   minDiscount Int?
-  /// Quantos itens puxar por varredura (a API pagina de 50 em 50).
+  /// Teto de produtos por varredura desta categoria.
   limit      Int       @default(100)
   lastRunAt  DateTime?
+
+  /// Categoria pai no ML — permite exibir a árvore no painel.
+  parentCategoryId String?
+  /// Profundidade na árvore (0 = raiz monitorada). Só para indentar a lista.
+  depth      Int       @default(0)
+  /// true quando veio da sincronização automática da árvore de categorias;
+  /// false quando o usuário criou na mão (e a sincronização não mexe).
+  auto       Boolean   @default(false)
+
   products   Product[]
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
   @@index([enabled])
+  @@index([parentCategoryId])
 }
 
 model Product {
   id            String  @id @default(cuid())
-  /// ID do item no Mercado Livre, ex. MLB1234567890
+  /// ID do anúncio no Mercado Livre, ex. MLB1234567890. É o anúncio mais
+  /// barato do produto de catálogo — é dele que sai o link de afiliado.
   mlId          String  @unique
+  /// Produto de catálogo que originou o anúncio, quando a coleta veio pelos
+  /// destaques de categoria. Permite reavaliar as ofertas do mesmo produto.
+  catalogId     String?
   title         String
   thumbnail     String?
   permalink     String
@@ -78,6 +96,7 @@ model Product {
   @@index([lastSeenAt])
   @@index([categoryId])
   @@index([blocked])
+  @@index([catalogId])
 }
 
 /// Um ponto de preço por varredura. É daqui que sai o "mais barato que o normal".
@@ -339,4 +358,26 @@ model Setting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+/// Token de usuário do Mercado Livre, obtido pelo fluxo authorization_code.
+/// A documentação oficial só reconhece authorization_code e refresh_token
+/// como grant types; client_credentials funciona por tolerância e pode ser
+/// cortado sem aviso, como aconteceu com a API de busca.
+///
+/// Linha única: o id fixo "default" impede duplicata.
+model MLAuth {
+  id           String   @id @default("default")
+  /// Id e apelido da conta do Mercado Livre que autorizou.
+  mlUserId     String?
+  nickname     String?
+
+  accessToken  String
+  /// O ML rotaciona o refresh token a cada uso: o antigo morre na hora.
+  refreshToken String
+  expiresAt    DateTime
+  scope        String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

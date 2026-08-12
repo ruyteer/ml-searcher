@@ -1,12 +1,13 @@
-import { ArrowDown, ArrowUp, type LucideIcon } from "lucide-react";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { IconDescendo, IconSubindo, type AppIcon } from "@/components/icons";
 
 export interface StatCardProps {
   label: string;
   value: React.ReactNode;
-  icon?: LucideIcon;
+  icon?: AppIcon;
   /// Variação percentual (ex.: 12.4 ou -3.1). Positivo = verde com seta pra
   /// cima, negativo = vermelho com seta pra baixo.
   delta?: number;
@@ -19,7 +20,7 @@ export interface StatCardProps {
 export function StatCard({
   label,
   value,
-  icon: Icon,
+  icon,
   delta,
   deltaLabel,
   loading,
@@ -31,7 +32,7 @@ export function StatCard({
         <CardContent className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <Skeleton className="h-4 w-24" />
-            {Icon && <Skeleton className="size-8 rounded-lg" />}
+            {icon && <Skeleton className="size-8 rounded-lg" />}
           </div>
           <Skeleton className="h-8 w-20" />
           <Skeleton className="h-3 w-16" />
@@ -48,13 +49,19 @@ export function StatCard({
       <CardContent className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">{label}</span>
-          {Icon && (
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Icon className="size-4" />
+          {icon && (
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-foreground">
+              <HugeiconsIcon icon={icon} size={16} strokeWidth={1.6} aria-hidden="true" />
             </div>
           )}
         </div>
-        <span className="text-2xl font-semibold tracking-tight text-foreground">{value}</span>
+        {/* Número grande usa a fonte de display e dígito de largura fixa */}
+        <span
+          className="font-heading text-2xl font-semibold tracking-tight text-foreground"
+          data-numeric
+        >
+          {value}
+        </span>
         {typeof delta === "number" && (
           <div className="flex items-center gap-1.5 text-xs">
             <span
@@ -64,9 +71,24 @@ export function StatCard({
                 isNegative && "text-danger",
                 !isPositive && !isNegative && "text-muted-foreground"
               )}
+              data-numeric
             >
-              {isPositive && <ArrowUp className="size-3" />}
-              {isNegative && <ArrowDown className="size-3" />}
+              {isPositive && (
+                <HugeiconsIcon
+                  icon={IconSubindo}
+                  size={12}
+                  strokeWidth={2.2}
+                  aria-hidden="true"
+                />
+              )}
+              {isNegative && (
+                <HugeiconsIcon
+                  icon={IconDescendo}
+                  size={12}
+                  strokeWidth={2.2}
+                  aria-hidden="true"
+                />
+              )}
               {Math.abs(delta).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
             </span>
             {deltaLabel && <span className="text-muted-foreground">{deltaLabel}</span>}

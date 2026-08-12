@@ -1,32 +1,53 @@
 import {
-  LayoutDashboard,
-  Tag,
-  Package,
-  Link2,
-  FileText,
-  MessageSquareQuote,
-  Send,
-  Settings,
-  type LucideIcon,
-} from "lucide-react";
+  type AppIcon,
+  IconConfiguracoes,
+  IconConfiguracoesAlt,
+  IconFrases,
+  IconFrasesAlt,
+  IconLinks,
+  IconLinksAlt,
+  IconOfertas,
+  IconOfertasAlt,
+  IconPresells,
+  IconPresellsAlt,
+  IconProdutos,
+  IconProdutosAlt,
+  IconVisaoGeral,
+  IconVisaoGeralAlt,
+  IconWhatsapp,
+  IconWhatsappAlt,
+} from "@/components/icons";
 
 export interface NavItem {
   href: string;
   label: string;
-  icon: LucideIcon;
-  /// Item ainda não liberado — recebe um badge "em breve" e continua clicável (404 por ora).
+  icon: AppIcon;
+  /// Segunda variante do mesmo ícone, exibida no hover e no item ativo.
+  iconAlt: AppIcon;
+  /// Item ainda não liberado. Recebe um selo "em breve" e continua clicável (404 por ora).
   comingSoon?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Visão geral", icon: LayoutDashboard },
-  { href: "/ofertas", label: "Ofertas", icon: Tag },
-  { href: "/produtos", label: "Produtos", icon: Package },
-  { href: "/links", label: "Links", icon: Link2 },
-  { href: "/presells", label: "Pre-sells", icon: FileText },
-  { href: "/frases", label: "Frases", icon: MessageSquareQuote },
-  { href: "/whatsapp", label: "WhatsApp", icon: Send, comingSoon: true },
-  { href: "/configuracoes", label: "Configurações", icon: Settings },
+  { href: "/dashboard", label: "Visão geral", icon: IconVisaoGeral, iconAlt: IconVisaoGeralAlt },
+  { href: "/ofertas", label: "Ofertas", icon: IconOfertas, iconAlt: IconOfertasAlt },
+  { href: "/produtos", label: "Produtos", icon: IconProdutos, iconAlt: IconProdutosAlt },
+  { href: "/links", label: "Links", icon: IconLinks, iconAlt: IconLinksAlt },
+  { href: "/presells", label: "Pre-sells", icon: IconPresells, iconAlt: IconPresellsAlt },
+  { href: "/frases", label: "Frases", icon: IconFrases, iconAlt: IconFrasesAlt },
+  {
+    href: "/whatsapp",
+    label: "WhatsApp",
+    icon: IconWhatsapp,
+    iconAlt: IconWhatsappAlt,
+    comingSoon: true,
+  },
+  {
+    href: "/configuracoes",
+    label: "Configurações",
+    icon: IconConfiguracoes,
+    iconAlt: IconConfiguracoesAlt,
+  },
 ];
 
 /// Encontra o item de navegação cujo href melhor casa com o pathname atual

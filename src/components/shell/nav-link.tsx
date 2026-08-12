@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -16,26 +17,53 @@ interface NavLinkProps {
   onNavigate?: () => void;
 }
 
+/**
+ * Item da navegação lateral.
+ *
+ * O estado ativo não pinta o fundo: ele coloca uma barra amarela sólida
+ * encostada na borda esquerda do item e engrossa o rótulo. O hover usa
+ * superfície neutra, sem cor. O foco por teclado usa anel amarelo. Cada
+ * estado tem uma pista visual própria, então nenhum se confunde com o outro.
+ * As regras de animação da barra e da troca de ícone vivem em globals.css
+ * (.nav-item, .nav-item-indicator, .nav-item-icon).
+ */
 export function NavLink({ item, collapsed, onNavigate }: NavLinkProps) {
   const pathname = usePathname();
   const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-  const Icon = item.icon;
 
   const link = (
     <Link
       href={item.href}
       prefetch
       onClick={onNavigate}
+      data-active={isActive}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "group flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
-        collapsed && "justify-center px-0",
+        "nav-item flex items-center gap-3 rounded-md py-2 pr-2.5 pl-3 text-sm transition-colors outline-none",
+        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
+        collapsed && "justify-center pr-0 pl-0",
         isActive
-          ? "bg-primary/15 text-primary"
-          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+          ? "font-semibold text-sidebar-foreground"
+          : "font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
       )}
     >
-      <Icon className="size-4 shrink-0 opacity-90 group-hover:opacity-100" />
+      <span className="nav-item-indicator" aria-hidden="true" />
+      <span className="nav-item-icon size-5">
+        <HugeiconsIcon
+          icon={item.icon}
+          size={20}
+          strokeWidth={1.6}
+          data-variant="base"
+          aria-hidden="true"
+        />
+        <HugeiconsIcon
+          icon={item.iconAlt}
+          size={20}
+          strokeWidth={2}
+          data-variant="alt"
+          aria-hidden="true"
+        />
+      </span>
       {!collapsed && (
         <>
           <span className="truncate">{item.label}</span>

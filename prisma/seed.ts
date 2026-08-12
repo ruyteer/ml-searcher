@@ -26,80 +26,60 @@ async function main() {
   console.log("Iniciando seed...");
 
   // ============================================================================
-  // Watches — categorias e termos de busca monitorados (nicho: cuidado pessoal)
+  // Watches — categorias monitoradas (nicho: Beleza e Cuidado Pessoal)
+  //
+  // IDs confirmados um a um contra a API real do ML (os antigos eram
+  // inventados — MLB1276 é "Esportes e Fitness", MLB263532 é "Ferramentas",
+  // MLB264724 nem existe). A API de busca está bloqueada (403) para esta
+  // aplicação, então nenhuma watch usa `query` — só coleta por categoria.
   // ============================================================================
 
-  const watches = [
-    {
-      label: "Máquinas de cortar cabelo",
-      categoryId: "MLB1276",
-      query: "máquina de cortar cabelo",
-    },
-    {
-      label: "Barbeadores e aparadores",
-      categoryId: null,
-      query: "barbeador aparador pelos",
-    },
-    {
-      label: "Cuidados com o cabelo",
-      categoryId: "MLB264724",
-      query: null,
-    },
-    {
-      label: "Pomada e cera modeladora",
-      categoryId: null,
-      query: "pomada modeladora cabelo",
-    },
-    {
-      label: "Minoxidil e crescimento",
-      categoryId: null,
-      query: "minoxidil barba cabelo",
-    },
-    {
-      label: "Cuidados com a barba",
-      categoryId: null,
-      query: "balm óleo barba",
-    },
-    {
-      label: "Cuidados com a pele masculina",
-      categoryId: "MLB263532",
-      query: null,
-    },
-    {
-      label: "Protetor solar facial",
-      categoryId: null,
-      query: "protetor solar facial",
-    },
-    {
-      label: "Perfumes masculinos",
-      categoryId: "MLB1246",
-      query: "perfume masculino",
-    },
-    {
-      label: "Secadores e chapinhas",
-      categoryId: null,
-      query: "secador de cabelo",
-    },
+  const BEAUTY_ROOT = "MLB1246";
+
+  const watches: Array<{
+    label: string;
+    categoryId: string;
+    parentCategoryId: string | null;
+    depth: number;
+  }> = [
+    { label: "Beleza e Cuidado Pessoal", categoryId: BEAUTY_ROOT, parentCategoryId: null, depth: 0 },
+    { label: "Artefatos para Cabelo", categoryId: "MLB455174", parentCategoryId: BEAUTY_ROOT, depth: 1 },
+    { label: "Artigos para Cabeleireiros", categoryId: "MLB264751", parentCategoryId: BEAUTY_ROOT, depth: 1 },
+    { label: "Barbearia", categoryId: "MLB264787", parentCategoryId: BEAUTY_ROOT, depth: 1 },
+    { label: "Cuidados com a Pele", categoryId: "MLB199407", parentCategoryId: BEAUTY_ROOT, depth: 1 },
+    { label: "Cuidados com o Cabelo", categoryId: "MLB1263", parentCategoryId: BEAUTY_ROOT, depth: 1 },
+    { label: "Depilação", categoryId: "MLB5383", parentCategoryId: BEAUTY_ROOT, depth: 1 },
+    { label: "Farmácia", categoryId: "MLB431646", parentCategoryId: BEAUTY_ROOT, depth: 1 },
+    { label: "Higiene Pessoal", categoryId: "MLB198312", parentCategoryId: BEAUTY_ROOT, depth: 1 },
+    { label: "Manicure e Pedicure", categoryId: "MLB29884", parentCategoryId: BEAUTY_ROOT, depth: 1 },
+    { label: "Maquiagem", categoryId: "MLB1248", parentCategoryId: BEAUTY_ROOT, depth: 1 },
+    { label: "Outros", categoryId: "MLB1275", parentCategoryId: BEAUTY_ROOT, depth: 1 },
+    { label: "Perfumes", categoryId: "MLB6284", parentCategoryId: BEAUTY_ROOT, depth: 1 },
+    { label: "Tratamentos de Beleza", categoryId: "MLB278194", parentCategoryId: BEAUTY_ROOT, depth: 1 },
   ];
 
+  // Upsert por categoryId (agora @unique) em vez de id sintético — é mais
+  // correto e evita duplicata se a sincronização automática da árvore
+  // (syncCategoryTree) já tiver rodado antes deste seed. Como essas watches
+  // são idênticas às que a sincronização geraria (auto: true), a atualização
+  // só toca label/parentCategoryId/depth — nunca enabled/limit/minDiscount,
+  // que o usuário pode já ter ajustado no painel.
   for (const watch of watches) {
-    const identifier = seedId("watch", watch.label);
-
     await prisma.watch.upsert({
-      where: {
-        id: identifier,
-      },
+      where: { categoryId: watch.categoryId },
       update: {
         label: watch.label,
-        enabled: true,
-        limit: 100,
-        minDiscount: null,
+        parentCategoryId: watch.parentCategoryId,
+        depth: watch.depth,
+        auto: true,
       },
       create: {
-        id: identifier,
         label: watch.label,
         categoryId: watch.categoryId,
-        query: watch.query,
+        query: null,
+        parentCategoryId: watch.parentCategoryId,
+        depth: watch.depth,
+        auto: true,
         enabled: true,
         limit: 100,
         minDiscount: null,

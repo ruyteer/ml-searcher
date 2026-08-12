@@ -4,13 +4,17 @@
 import type { RunStatus, Watch } from "@/generated/prisma";
 import { prisma } from "../prisma";
 import { getSettings } from "../settings";
-import { isFixtureMode, isMLApiError, searchWatch } from "../ml";
+import { collectForWatch, getCollectionMode, isFixtureMode, isMLApiError } from "../ml";
 import type { NormalizedProduct } from "../ml";
 import { detect } from "./detect";
 import type { PricePoint } from "./detect";
 
 /// Quantos upserts por transação.
 const UPSERT_CHUNK = 25;
+/// O Postgres é remoto (Railway), então o round-trip por upsert pesa: os 5s
+/// padrão do Prisma estouram no meio do chunk. Estes limites são folgados de
+/// propósito — a varredura roda em background, ninguém está esperando.
+const TX_OPTIONS = { timeout: 60_000, maxWait: 20_000 } as const;
 /// Janela do histórico usada como referência.
 const HISTORY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 /// Não recriar a mesma oferta (mesmo produto, mesmo preço) dentro desta janela.
@@ -89,6 +93,7 @@ class RunLog {
 
 function productFields(product: NormalizedProduct, watchId: string, now: Date) {
   return {
+    catalogId: product.catalogId,
     title: product.title,
     thumbnail: product.thumbnail,
     permalink: product.permalink,
@@ -115,6 +120,8 @@ interface WatchOutcome {
   itemsSeen: number;
   productsNew: number;
   offersNew: number;
+  /// Produtos descartados por caírem fora da árvore de Beleza (MLB1246).
+  offNiche: number;
 }
 
 interface WatchContext {
@@ -128,9 +135,20 @@ async function processWatch(watch: Watch, ctx: WatchContext): Promise<WatchOutco
   const { log, settings } = ctx;
   const now = new Date();
 
-  const found = await searchWatch(watch, { signal: ctx.signal });
-  log.add(`Watch "${watch.label}": ${found.length} item(ns) retornado(s) pela API.`);
-  if (found.length === 0) return { itemsSeen: 0, productsNew: 0, offersNew: 0 };
+  const collected = await collectForWatch(watch, { signal: ctx.signal });
+  const found = collected.products;
+
+  // Watch sem termo e sem categoria não tem por onde coletar. Não é falha da
+  // API: é configuração incompleta da watch.
+  if (collected.skipped) {
+    log.add(`Watch "${watch.label}": ${collected.note}.`);
+    return { itemsSeen: 0, productsNew: 0, offersNew: 0, offNiche: collected.offNiche };
+  }
+
+  log.add(
+    `Watch "${watch.label}": ${collected.note} -> ${found.length} produto(s) para avaliar.`,
+  );
+  if (found.length === 0) return { itemsSeen: 0, productsNew: 0, offersNew: 0, offNiche: collected.offNiche };
 
   const mlIds = found.map((p) => p.mlId);
 
@@ -147,7 +165,7 @@ async function processWatch(watch: Watch, ctx: WatchContext): Promise<WatchOutco
     log.add(`Watch "${watch.label}": ${blocked.length} produto(s) bloqueado(s) ignorado(s).`);
   }
   if (actionable.length === 0) {
-    return { itemsSeen: found.length, productsNew: 0, offersNew: 0 };
+    return { itemsSeen: found.length, productsNew: 0, offersNew: 0, offNiche: collected.offNiche };
   }
 
   const productsNew = actionable.filter((p) => !existingByMlId.has(p.mlId)).length;
@@ -194,6 +212,7 @@ async function processWatch(watch: Watch, ctx: WatchContext): Promise<WatchOutco
           select: { id: true, mlId: true },
         }),
       ),
+      TX_OPTIONS,
     );
     for (const row of rows) idByMlId.set(row.mlId, row.id);
   }
@@ -235,7 +254,7 @@ async function processWatch(watch: Watch, ctx: WatchContext): Promise<WatchOutco
 
   if (candidates.length === 0) {
     log.add(`Watch "${watch.label}": nenhuma oferta acima do limite de desconto.`);
-    return { itemsSeen: found.length, productsNew, offersNew: 0 };
+    return { itemsSeen: found.length, productsNew, offersNew: 0, offNiche: collected.offNiche };
   }
 
   // Deduplicação: mesma oferta (produto + preço) nas últimas 12h não repete.
@@ -263,7 +282,7 @@ async function processWatch(watch: Watch, ctx: WatchContext): Promise<WatchOutco
       ".",
   );
 
-  return { itemsSeen: found.length, productsNew, offersNew: fresh.length };
+  return { itemsSeen: found.length, productsNew, offersNew: fresh.length, offNiche: collected.offNiche };
 }
 
 // ------------------------------------------------------------------- runScrape
@@ -322,8 +341,19 @@ export async function runScrape(options: RunScrapeOptions = {}): Promise<RunScra
   });
 
   const log = new RunLog();
-  log.add(`Varredura iniciada (${trigger}) — ${watches.length} watch(es) habilitada(s).`);
+  log.add(`Varredura iniciada (${trigger}): ${watches.length} watch(es) habilitada(s).`);
   if (fixture) log.add("Modo FIXTURE ativo: dados de exemplo, sem chamadas reais ao Mercado Livre.");
+  else {
+    const mode = await getCollectionMode();
+    log.add(
+      mode === "search"
+        ? "Fonte preferida: busca por termo no catálogo do ML. Watch sem termo usa os destaques da categoria."
+        : "Fonte preferida: destaques de categoria.",
+    );
+    log.add(
+      "Busca por termo: só entram produtos cuja categoria fica dentro de Beleza e Cuidado Pessoal (MLB1246).",
+    );
+  }
   log.add(
     `Filtros: desconto mínimo ${settings.minDiscount}%, preço mínimo ${settings.minPrice} centavos, ` +
       `${settings.minHistoryPoints} ponto(s) de histórico, ${settings.minSoldQuantity} venda(s).`,
@@ -331,6 +361,9 @@ export async function runScrape(options: RunScrapeOptions = {}): Promise<RunScra
 
   const totals = { watchesDone: 0, itemsSeen: 0, productsNew: 0, offersNew: 0 };
   const failures: string[] = [];
+  /// Fora de `totals` porque o objeto vai direto para o update do ScrapeRun e
+  /// a tabela não tem coluna para isso.
+  let offNicheTotal = 0;
 
   /// Espelha o progresso no banco para o painel poder acompanhar ao vivo.
   const flush = async () => {
@@ -352,6 +385,7 @@ export async function runScrape(options: RunScrapeOptions = {}): Promise<RunScra
         totals.itemsSeen += outcome.itemsSeen;
         totals.productsNew += outcome.productsNew;
         totals.offersNew += outcome.offersNew;
+        offNicheTotal += outcome.offNiche;
         await prisma.watch.update({ where: { id: watch.id }, data: { lastRunAt: new Date() } });
       } catch (err) {
         // Uma watch quebrada não pode derrubar as outras.
@@ -375,6 +409,11 @@ export async function runScrape(options: RunScrapeOptions = {}): Promise<RunScra
       `Varredura concluída: ${totals.itemsSeen} item(ns) vistos, ${totals.productsNew} produto(s) novo(s), ` +
         `${totals.offersNew} oferta(s) nova(s).`,
     );
+    if (offNicheTotal > 0) {
+      log.add(
+        `${offNicheTotal} produto(s) descartado(s) por estarem fora de Beleza e Cuidado Pessoal (MLB1246).`,
+      );
+    }
     if (failures.length > 0) log.add(`${failures.length} watch(es) falharam.`);
 
     await prisma.scrapeRun.update({
