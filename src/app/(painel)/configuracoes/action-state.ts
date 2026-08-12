@@ -50,3 +50,29 @@ export interface DomainDiscoveryResult {
   message: string;
   domains: DiscoveredDomainOption[];
 }
+
+// ------------------------------------------- categorias monitoradas: números
+
+/// Onde uma categoria cai no nicho de cuidado pessoal masculino.
+/// Espelha NicheStanding de @/lib/ml/categories sem importar valor de servidor.
+export type CategoriaNoNicho = "masculino" | "fora" | "neutro";
+
+/// Números de uma categoria monitorada, carregados sob demanda pela aba.
+export interface CategoriaNumeros {
+  id: string;
+  produtos: number;
+  ofertas: number;
+  nicho: CategoriaNoNicho;
+}
+
+export interface CategoriaNumerosResult {
+  ok: boolean;
+  message: string;
+  itens: CategoriaNumeros[];
+}
+
+/// Resultado de uma exclusão (uma ou várias de uma vez).
+export interface ExclusaoResult extends ActionState {
+  /// Ids que saíram de verdade, para a lista sumir na hora.
+  excluidos: string[];
+}

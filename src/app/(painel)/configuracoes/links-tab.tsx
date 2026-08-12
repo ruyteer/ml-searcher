@@ -137,20 +137,22 @@ export function LinksTab({ settings }: LinksTabProps) {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Field
-                label="Tool (matt_tool)"
+                label="Tool"
                 name="affiliateTool"
                 placeholder="Ex.: 88888888"
                 value={affiliateTool}
                 onValueChange={setAffiliateTool}
                 error={affiliateState.errors?.affiliateTool?.[0]}
+                tooltip="Código matt_tool do seu programa de afiliados no Mercado Livre."
               />
               <Field
-                label="Word (matt_word)"
+                label="Word"
                 name="affiliateWord"
                 placeholder="Opcional"
                 value={affiliateWord}
                 onValueChange={setAffiliateWord}
                 error={affiliateState.errors?.affiliateWord?.[0]}
+                tooltip="Código matt_word opcional, para identificar a origem do link (ex.: qual grupo de WhatsApp)."
               />
             </div>
 

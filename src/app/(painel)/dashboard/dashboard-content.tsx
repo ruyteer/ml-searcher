@@ -13,6 +13,7 @@ import { TopProductsSection } from "./top-products-section";
 import { TopLinksSection } from "./top-links-section";
 import { LatestRunSection } from "./latest-run-section";
 import { PresellsSection } from "./presells-section";
+import { RecentOffersSection } from "./recent-offers-section";
 import { ChartSkeleton, KpiRowSkeleton, ListSkeleton, RunCardSkeleton } from "./skeletons";
 
 /// Gate assíncrono: decide entre o EmptyState de banco vazio e a grade de
@@ -60,11 +61,12 @@ export async function DashboardContent({ period }: { period: Period }) {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <Suspense fallback={<ListSkeleton rows={8} />}>
-            <TopProductsSection period={period} />
-          </Suspense>
-        </div>
+        <Suspense fallback={<ListSkeleton rows={6} />}>
+          <TopProductsSection period={period} />
+        </Suspense>
+        <Suspense fallback={<ListSkeleton rows={6} />}>
+          <RecentOffersSection />
+        </Suspense>
         <Suspense fallback={<RunCardSkeleton />}>
           <LatestRunSection />
         </Suspense>

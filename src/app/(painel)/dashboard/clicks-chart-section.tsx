@@ -12,6 +12,7 @@ export async function ClicksChartSection({ period }: { period: Period }) {
       isEmpty={isEmpty}
       emptyMessage="Nenhum clique registrado neste período"
       height={320}
+      fillHeight
     >
       <ClicksAreaChart data={data} />
     </ChartCard>

@@ -13,8 +13,15 @@ export const linksSearchParams = {
   active: parseAsStringEnum([...LINK_ACTIVE_FILTER_OPTIONS]).withDefault("all"),
   q: parseAsString.withDefault(""),
   period: parseAsStringEnum([...LINK_PERIOD_OPTIONS]).withDefault("all"),
-  sort: parseAsStringEnum([...LINK_SORT_OPTIONS]).withDefault("clicks-desc"),
-  linkId: parseAsString,
+  // shallow: false força ida ao servidor a cada troca — o conteúdo da tabela
+  // (ordenação) e do drawer de detalhe (linkId) são renderizados no Server
+  // Component da página, então uma troca só no client (shallow) nunca chega
+  // lá: a tabela não reordena e o drawer abre com o `children` antigo (que
+  // era `null` na primeira carga), ou seja, vazio.
+  sort: parseAsStringEnum([...LINK_SORT_OPTIONS]).withDefault("clicks-desc").withOptions({
+    shallow: false,
+  }),
+  linkId: parseAsString.withOptions({ shallow: false }),
 };
 
 export const linksSearchParamsCache = createSearchParamsCache(linksSearchParams);

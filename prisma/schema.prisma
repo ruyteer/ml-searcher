@@ -207,12 +207,18 @@ model Click {
 
 // ----------------------------------------------------------------- presell
 
+/// Modelo (template) de página de aquecimento. UM modelo serve VÁRIOS
+/// produtos: os campos de conteúdo aceitam as variáveis {{titulo}} {{preco}}
+/// {{precoAntigo}} {{desconto}} {{imagem}}, e quando ficam vazios o conteúdo
+/// sai automaticamente do produto do Link que abriu a página.
 model Presell {
   id            String   @id @default(cuid())
   slug          String   @unique
+  /// Nome do modelo. Uso interno do painel, o visitante nunca vê.
   title         String
-  headline      String
-  /// Texto de apoio, aceita quebras de linha.
+  /// Chamada da página. Vazia = usa o título do produto. Aceita variáveis.
+  headline      String?
+  /// Texto de apoio, aceita quebras de linha e variáveis.
   body          String?
   ctaText       String   @default("Liberar oferta")
 
@@ -222,10 +228,15 @@ model Presell {
   /// Segundos de espera antes de liberar o botão final.
   gateDelay     Int      @default(5)
 
+  /// Imagem fixa. Vazia = usa a foto do produto do link.
   imageUrl      String?
-  /// Preço exibido na página, em centavos. Só vitrine.
+  /// Preço exibido na página, em centavos. Vazio = usa o preço do produto.
   priceLabel    Int?
   originalLabel Int?
+
+  /// Modelo usado quando um link é gerado "com página de aquecimento" sem que
+  /// o usuário escolha qual modelo. Só um modelo fica marcado por vez.
+  isDefault     Boolean  @default(false)
 
   active        Boolean  @default(true)
   views         Int      @default(0)
@@ -236,6 +247,7 @@ model Presell {
   links         Link[]
 
   @@index([active])
+  @@index([isDefault])
 }
 
 // -------------------------------------------------- copy: frases/templates

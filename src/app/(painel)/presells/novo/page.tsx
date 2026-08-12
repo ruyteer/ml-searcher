@@ -1,11 +1,16 @@
 import { Suspense } from "react";
-import { listEligibleLinks } from "@/lib/data/presells";
+import { listEligibleLinks, listPreviewProducts } from "@/lib/data/presells";
 import { PresellEditor } from "../presell-editor";
 import { PresellEditorSkeleton } from "../skeletons";
 
 async function NewPresellForm() {
-  const eligibleLinks = await listEligibleLinks();
-  return <PresellEditor mode="create" eligibleLinks={eligibleLinks} />;
+  const [eligibleLinks, previewProducts] = await Promise.all([
+    listEligibleLinks(),
+    listPreviewProducts(),
+  ]);
+  return (
+    <PresellEditor mode="create" eligibleLinks={eligibleLinks} previewProducts={previewProducts} />
+  );
 }
 
 export default function NewPresellPage() {

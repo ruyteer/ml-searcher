@@ -1,6 +1,6 @@
 "use client";
 
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 interface DailyPoint {
   day: string;
@@ -20,8 +20,8 @@ export function DailyClicksChart({ data }: { data: DailyPoint[] }) {
       <AreaChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
         <defs>
           <linearGradient id="clicksFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.35} />
-            <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
+            <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.35} />
+            <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />
@@ -53,7 +53,7 @@ export function DailyClicksChart({ data }: { data: DailyPoint[] }) {
         <Area
           type="monotone"
           dataKey="count"
-          stroke="var(--primary)"
+          stroke="var(--chart-1)"
           strokeWidth={2}
           fill="url(#clicksFill)"
         />
@@ -68,15 +68,29 @@ interface DevicePoint {
 }
 
 const DEVICE_LABELS: Record<string, string> = {
-  mobile: "Mobile",
-  desktop: "Desktop",
+  mobile: "Celular",
+  desktop: "Computador",
   tablet: "Tablet",
   bot: "Bot",
   desconhecido: "Desconhecido",
 };
 
+/// Mesma paleta categórica do donut de dispositivos do dashboard, pra manter
+/// a identidade visual do aparelho consistente entre as duas telas.
+const DEVICE_COLOR: Record<string, string> = {
+  mobile: "var(--chart-1)",
+  desktop: "var(--chart-2)",
+  tablet: "var(--chart-3)",
+  bot: "var(--chart-4)",
+  desconhecido: "var(--chart-5)",
+};
+
 export function DeviceBreakdownChart({ data }: { data: DevicePoint[] }) {
-  const chartData = data.map((d) => ({ label: DEVICE_LABELS[d.device] ?? d.device, count: d.count }));
+  const chartData = data.map((d) => ({
+    device: d.device,
+    label: DEVICE_LABELS[d.device] ?? d.device,
+    count: d.count,
+  }));
 
   return (
     <ResponsiveContainer width="100%" height={140}>
@@ -100,7 +114,11 @@ export function DeviceBreakdownChart({ data }: { data: DevicePoint[] }) {
             color: "var(--popover-foreground)",
           }}
         />
-        <Bar dataKey="count" fill="var(--primary)" radius={[0, 4, 4, 0]} maxBarSize={16} />
+        <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={16}>
+          {chartData.map((entry) => (
+            <Cell key={entry.device} fill={DEVICE_COLOR[entry.device] ?? "var(--chart-5)"} />
+          ))}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );

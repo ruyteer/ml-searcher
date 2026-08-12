@@ -5,13 +5,20 @@ import { TAGS, bust } from "@/lib/cache";
 import {
   clearTokenCache,
   disconnect as disconnectMl,
-  exchangeCode,
   isMLApiError,
   resolveAccessToken,
-  setMlRedirectUri,
 } from "@/lib/ml";
 import { toCents } from "@/lib/format";
-import { createWatch, updateWatch, deleteWatch, setWatchEnabled, syncCategoryTree } from "@/lib/data/watches";
+import {
+  createWatch,
+  updateWatch,
+  deleteWatches,
+  setWatchEnabled,
+  setWatchesEnabled,
+  syncCategoryTree,
+  listWatchStats,
+  clearDiscardedCategories,
+} from "@/lib/data/watches";
 import { BEAUTY_ROOT } from "@/lib/ml/categories";
 import { discoverDomains, isBeautyDomain } from "@/lib/ml/domains";
 import {
@@ -19,11 +26,17 @@ import {
   domainSchema,
   affiliateSchema,
   mlSchema,
-  mlManualCodeSchema,
-  mlRedirectUriSchema,
   watchSchema,
 } from "./schemas";
-import { type ActionState, type DomainDiscoveryResult, ok, fail, zodErrors } from "./action-state";
+import {
+  type ActionState,
+  type CategoriaNumerosResult,
+  type DomainDiscoveryResult,
+  type ExclusaoResult,
+  ok,
+  fail,
+  zodErrors,
+} from "./action-state";
 
 // ------------------------------------------------------- detecção de ofertas
 
@@ -114,50 +127,6 @@ export async function testMlConnectionAction(
   }
 }
 
-/// Guarda a URL de redirecionamento cadastrada na aplicação do Mercado Livre.
-/// Fica em `Setting` (modelo key/value livre) com a chave `mlRedirectUri`, e
-/// não no SETTINGS_SCHEMA: é dado do cadastro da aplicação, não um ajuste de
-/// comportamento, e precisa bater byte a byte com o que foi registrado lá.
-export async function updateMlRedirectUriAction(
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const parsed = mlRedirectUriSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return fail("Verifique os campos destacados.", zodErrors(parsed.error));
-
-  await setMlRedirectUri(parsed.data.mlRedirectUri);
-  return ok("URL de redirecionamento salva.");
-}
-
-/// Conexão manual: o usuário cola o `code` que apareceu na barra de endereço
-/// depois de autorizar. Existe porque o Mercado Livre só aceita redirect URI
-/// em HTTPS, e o painel ainda roda em http://localhost. Sem isto não daria
-/// para conectar a conta hoje.
-export async function connectMlWithCodeAction(
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const parsed = mlManualCodeSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return fail("Verifique os campos destacados.", zodErrors(parsed.error));
-
-  const { mlRedirectUri, mlCode } = parsed.data;
-  // A troca só funciona com a MESMA redirect URI usada na autorização, então
-  // salvamos antes: o que está no campo é o que vale.
-  await setMlRedirectUri(mlRedirectUri);
-
-  try {
-    // Sem clearTokenCache aqui: exchangeCode já deixa o token novo em cache, e
-    // invalidá-lo forçaria uma renovação imediata, queimando o refresh token
-    // recém-emitido à toa (o ML rotaciona ele a cada uso).
-    const status = await exchangeCode(mlCode, mlRedirectUri);
-    const quem = status.nickname ?? status.mlUserId ?? "sua conta";
-    return ok(`Conta conectada: ${quem}. As próximas chamadas já usam o token de usuário.`);
-  } catch (err) {
-    if (isMLApiError(err)) return fail(err.message);
-    return fail("Falha inesperada ao concluir a conexão. Tente autorizar de novo.");
-  }
-}
-
 export async function disconnectMlAction(
   _prev: ActionState,
   _formData: FormData,
@@ -187,7 +156,7 @@ export async function updateWatchAction(
   formData: FormData,
 ): Promise<ActionState> {
   const id = String(formData.get("id") ?? "");
-  if (!id) return fail("ID inválido.");
+  if (!id) return fail("Categoria inválida.");
 
   const parsed = watchSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fail("Verifique os campos destacados.", zodErrors(parsed.error));
@@ -197,16 +166,96 @@ export async function updateWatchAction(
   return ok("Categoria monitorada atualizada.");
 }
 
-export async function deleteWatchAction(
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const id = String(formData.get("id") ?? "");
-  if (!id) return fail("ID inválido.");
+function plural(n: number, um: string, muitos: string): string {
+  return n === 1 ? `1 ${um}` : `${n} ${muitos}`;
+}
 
-  await deleteWatch(id);
-  bust(TAGS.watches);
-  return ok("Categoria excluída. Os produtos já coletados continuam no catálogo.");
+/// Exclui uma ou várias categorias monitoradas de uma vez, numa transação só.
+/// Chamada direta pelo cliente (sem <form>) porque a seleção múltipla vive em
+/// estado do React, não em campos de formulário.
+export async function deleteWatchesAction(ids: string[]): Promise<ExclusaoResult> {
+  const alvos = [...new Set(ids.filter((id) => typeof id === "string" && id.length > 0))];
+  if (alvos.length === 0) {
+    return { ...fail("Nenhuma categoria selecionada."), excluidos: [] };
+  }
+
+  try {
+    const { excluidas, produtosSoltos } = await deleteWatches(alvos);
+    bust(TAGS.watches);
+
+    if (excluidas === 0) {
+      return { ...fail("Essas categorias já não existem mais na lista."), excluidos: [] };
+    }
+
+    const partes = [`${plural(excluidas, "categoria excluída", "categorias excluídas")}.`];
+    if (produtosSoltos > 0) {
+      partes.push(
+        `${plural(produtosSoltos, "produto continua", "produtos continuam")} no catálogo, agora sem categoria.`,
+      );
+    }
+    partes.push("A sincronização automática não vai trazer essas categorias de volta.");
+    return { ...ok(partes.join(" ")), excluidos: alvos };
+  } catch {
+    return { ...fail("Não foi possível excluir. Tente novamente."), excluidos: [] };
+  }
+}
+
+/// Números de cada categoria monitorada (produtos, ofertas e leitura de nicho).
+/// Carregados sob demanda pela aba, e não junto da página, para a tela abrir
+/// rápido mesmo com centenas de categorias.
+export async function loadCategoriaNumerosAction(): Promise<CategoriaNumerosResult> {
+  try {
+    const stats = await listWatchStats();
+    return {
+      ok: true,
+      message: "",
+      itens: stats.map((s) => ({
+        id: s.id,
+        produtos: s.produtos,
+        ofertas: s.ofertas,
+        nicho: s.standing,
+      })),
+    };
+  } catch {
+    return { ok: false, message: "Não foi possível carregar os números das categorias.", itens: [] };
+  }
+}
+
+/// Liga ou desliga várias de uma vez (usado pelo "desligar tudo que não é
+/// cuidado masculino" e pela seleção múltipla).
+export async function setWatchesEnabledAction(
+  ids: string[],
+  enabled: boolean,
+): Promise<ActionState> {
+  const alvos = [...new Set(ids.filter((id) => typeof id === "string" && id.length > 0))];
+  if (alvos.length === 0) return fail("Nenhuma categoria selecionada.");
+  try {
+    const count = await setWatchesEnabled(alvos, enabled);
+    bust(TAGS.watches);
+    return ok(
+      `${plural(count, "categoria", "categorias")} ${enabled ? "ligada(s)" : "desligada(s)"}.`,
+    );
+  } catch {
+    return fail("Não foi possível atualizar. Tente novamente.");
+  }
+}
+
+/// Esquece as exclusões: a próxima sincronização volta a trazer tudo o que o
+/// usuário já apagou. Existe para o caso de arrependimento.
+export async function restaurarCategoriasDescartadasAction(
+  _prev: ActionState,
+  _formData: FormData,
+): Promise<ActionState> {
+  try {
+    const quantas = await clearDiscardedCategories();
+    bust(TAGS.watches);
+    if (quantas === 0) return ok("Nenhuma categoria estava marcada como excluída.");
+    return ok(
+      `${plural(quantas, "categoria volta", "categorias voltam")} na próxima vez que você sincronizar com o Mercado Livre.`,
+    );
+  } catch {
+    return fail("Não foi possível liberar as categorias excluídas.");
+  }
 }
 
 /// Chamada direta (sem <form>) pelo botão "Descobrir domínio" do diálogo de
@@ -251,13 +300,16 @@ export async function syncCategoryTreeAction(
   _formData: FormData,
 ): Promise<ActionState> {
   try {
-    const { criadas, atualizadas, removidas, total } = await syncCategoryTree({
+    const { criadas, atualizadas, removidas, respeitadas, total } = await syncCategoryTree({
       rootId: BEAUTY_ROOT,
       maxDepth: CATEGORY_SYNC_MAX_DEPTH,
     });
     bust(TAGS.watches);
     const partes = [`${criadas} criadas`, `${atualizadas} atualizadas`, `${total} no total`];
-    if (removidas > 0) partes.push(`${removidas} sumiram da árvore do ML (mantidas)`);
+    if (respeitadas > 0) {
+      partes.push(`${respeitadas} que você excluiu continuaram fora`);
+    }
+    if (removidas > 0) partes.push(`${removidas} sumiram da lista do Mercado Livre (mantidas)`);
     return ok(`Sincronização concluída: ${partes.join(", ")}.`);
   } catch {
     return fail("Não foi possível sincronizar com o Mercado Livre. Tente novamente.");

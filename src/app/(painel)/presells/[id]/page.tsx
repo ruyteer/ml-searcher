@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { getPresellForEdit, listEligibleLinks } from "@/lib/data/presells";
+import { getPresellForEdit, listEligibleLinks, listPreviewProducts } from "@/lib/data/presells";
 import { PresellEditor } from "../presell-editor";
 import { PresellEditorSkeleton } from "../skeletons";
 
@@ -12,8 +12,18 @@ async function EditPresellForm({ id }: { id: string }) {
   const presell = await getPresellForEdit(id);
   if (!presell) notFound();
 
-  const eligibleLinks = await listEligibleLinks(presell.id);
-  return <PresellEditor mode="edit" presell={presell} eligibleLinks={eligibleLinks} />;
+  const [eligibleLinks, previewProducts] = await Promise.all([
+    listEligibleLinks(presell.id),
+    listPreviewProducts(),
+  ]);
+  return (
+    <PresellEditor
+      mode="edit"
+      presell={presell}
+      eligibleLinks={eligibleLinks}
+      previewProducts={previewProducts}
+    />
+  );
 }
 
 export default async function EditPresellPage({ params }: EditPresellPageProps) {

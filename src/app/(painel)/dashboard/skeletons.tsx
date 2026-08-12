@@ -62,9 +62,8 @@ export function DashboardSkeleton() {
         </div>
       </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <ListSkeleton rows={8} />
-        </div>
+        <ListSkeleton rows={6} />
+        <ListSkeleton rows={6} />
         <RunCardSkeleton />
       </div>
     </div>

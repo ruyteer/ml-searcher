@@ -2,7 +2,8 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { prisma } from "../prisma";
 import { TAGS } from "../cache";
-import { walkCategoryTree } from "@/lib/ml/categories";
+import { classifyPath, walkCategoryTree } from "@/lib/ml/categories";
+import type { NicheStanding } from "@/lib/ml/categories";
 import type { Watch } from "@/generated/prisma";
 
 /// Camada de dados das watches (categorias monitoradas). Só persistência —
@@ -70,10 +71,167 @@ export async function setWatchEnabled(id: string, enabled: boolean): Promise<Wat
   return prisma.watch.update({ where: { id }, data: { enabled } });
 }
 
-/// Exclui a watch. Produtos já coletados ficam com watchId nulo (onDelete:
+/// Alterna várias de uma vez, numa transação só.
+export async function setWatchesEnabled(ids: string[], enabled: boolean): Promise<number> {
+  if (ids.length === 0) return 0;
+  const { count } = await prisma.watch.updateMany({ where: { id: { in: ids } }, data: { enabled } });
+  return count;
+}
+
+// -------------------------------------------------- categorias descartadas
+
+/// Onde guardamos os ids de categoria do Mercado Livre que o usuário excluiu.
+/// Fica no Setting (chave/valor livre) porque é memória de decisão do usuário,
+/// não ajuste de comportamento — e assim não precisa de coluna nova no banco.
+const DISCARDED_KEY = "categoriasDescartadas";
+
+/// Ids de categoria que o usuário já excluiu de propósito. A sincronização
+/// automática consulta esta lista e não recria nenhum deles.
+export async function listDiscardedCategoryIds(): Promise<string[]> {
+  const row = await prisma.setting.findUnique({ where: { key: DISCARDED_KEY } });
+  if (!row?.value) return [];
+  try {
+    const parsed: unknown = JSON.parse(row.value);
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveDiscardedCategoryIds(ids: string[]): Promise<void> {
+  const value = JSON.stringify([...new Set(ids)]);
+  await prisma.setting.upsert({
+    where: { key: DISCARDED_KEY },
+    create: { key: DISCARDED_KEY, value },
+    update: { value },
+  });
+}
+
+/// Esquece as exclusões: a próxima sincronização volta a trazer tudo.
+export async function clearDiscardedCategories(): Promise<number> {
+  const atuais = await listDiscardedCategoryIds();
+  if (atuais.length > 0) await saveDiscardedCategoryIds([]);
+  return atuais.length;
+}
+
+// ------------------------------------------------------------- exclusão
+
+export interface DeleteWatchesResult {
+  /// Quantas categorias monitoradas saíram da lista.
+  excluidas: number;
+  /// Quantos produtos já coletados ficaram sem categoria (continuam no catálogo).
+  produtosSoltos: number;
+  /// Quantos ids de categoria entraram na lista de descartadas.
+  descartadas: number;
+}
+
+/// Exclui várias categorias monitoradas numa transação só.
+///
+/// Produtos já coletados NÃO somem: o schema usa onDelete: SetNull, então eles
+/// apenas ficam sem categoria e seguem no catálogo, com histórico e ofertas
+/// intactos. As categorias que vieram da sincronização automática entram na
+/// lista de descartadas para que a próxima sincronização não as ressuscite.
+export async function deleteWatches(ids: string[]): Promise<DeleteWatchesResult> {
+  if (ids.length === 0) return { excluidas: 0, produtosSoltos: 0, descartadas: 0 };
+
+  const alvos = await prisma.watch.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, categoryId: true },
+  });
+  if (alvos.length === 0) return { excluidas: 0, produtosSoltos: 0, descartadas: 0 };
+
+  const alvoIds = alvos.map((w) => w.id);
+  const categoriasAlvo = alvos.map((w) => w.categoryId).filter((v): v is string => Boolean(v));
+
+  const produtosSoltos = await prisma.product.count({ where: { watchId: { in: alvoIds } } });
+
+  const jaDescartadas = await listDiscardedCategoryIds();
+  const novasDescartadas = [...new Set([...jaDescartadas, ...categoriasAlvo])];
+
+  const [{ count }] = await prisma.$transaction([
+    prisma.watch.deleteMany({ where: { id: { in: alvoIds } } }),
+    prisma.setting.upsert({
+      where: { key: DISCARDED_KEY },
+      create: { key: DISCARDED_KEY, value: JSON.stringify(novasDescartadas) },
+      update: { value: JSON.stringify(novasDescartadas) },
+    }),
+  ]);
+
+  return {
+    excluidas: count,
+    produtosSoltos,
+    descartadas: novasDescartadas.length - jaDescartadas.length,
+  };
+}
+
+/// Exclui uma só. Produtos já coletados ficam com watchId nulo (onDelete:
 /// SetNull no schema) — eles permanecem no catálogo normalmente.
-export async function deleteWatch(id: string): Promise<void> {
-  await prisma.watch.delete({ where: { id } });
+export async function deleteWatch(id: string): Promise<DeleteWatchesResult> {
+  return deleteWatches([id]);
+}
+
+// ------------------------------------------------------------- estatísticas
+
+export interface WatchStats {
+  id: string;
+  /// Produtos já coletados por esta categoria.
+  produtos: number;
+  /// Ofertas que esses produtos já renderam.
+  ofertas: number;
+  /// Onde ela cai no nicho de cuidado pessoal masculino.
+  standing: NicheStanding;
+}
+
+interface CountRow {
+  watchId: string;
+  produtos: number;
+  ofertas: number;
+}
+
+/// Produtos e ofertas por categoria monitorada, mais a leitura de nicho.
+/// É o que a tela precisa para o usuário decidir o que apagar sem chutar.
+export async function listWatchStats(): Promise<WatchStats[]> {
+  const [watches, rows] = await Promise.all([
+    prisma.watch.findMany({ select: { id: true, categoryId: true, parentCategoryId: true } }),
+    // Uma consulta só: agregar em memória custaria carregar o catálogo inteiro.
+    prisma.$queryRaw<CountRow[]>`
+      SELECT p."watchId" AS "watchId",
+             COUNT(DISTINCT p.id)::int AS "produtos",
+             COUNT(o.id)::int AS "ofertas"
+      FROM "Product" p
+      LEFT JOIN "Offer" o ON o."productId" = p.id
+      WHERE p."watchId" IS NOT NULL
+      GROUP BY p."watchId"
+    `,
+  ]);
+
+  const contagem = new Map(rows.map((r) => [r.watchId, r]));
+  // Pai de cada categoria, para subir a árvore sem bater na API.
+  const paiDe = new Map<string, string | null>();
+  for (const w of watches) {
+    if (w.categoryId) paiDe.set(w.categoryId, w.parentCategoryId);
+  }
+
+  function caminho(categoryId: string | null): string[] {
+    const out: string[] = [];
+    let atual = categoryId;
+    // O limite corta qualquer ciclo que um dado torto possa ter criado.
+    for (let i = 0; atual && i < 12; i += 1) {
+      out.push(atual);
+      atual = paiDe.get(atual) ?? null;
+    }
+    return out;
+  }
+
+  return watches.map((w) => {
+    const row = contagem.get(w.id);
+    return {
+      id: w.id,
+      produtos: row?.produtos ?? 0,
+      ofertas: row?.ofertas ?? 0,
+      standing: w.categoryId ? classifyPath(caminho(w.categoryId)) : "neutro",
+    };
+  });
 }
 
 // -------------------------------------------------- sincronização automática
@@ -84,6 +242,9 @@ export interface SyncCategoryTreeResult {
   /// Categorias que existiam como watch automática mas não vieram mais na
   /// árvore atual do ML — não apagamos (podem ter produtos ligados), só contamos.
   removidas: number;
+  /// Categorias que vieram na árvore do ML mas o usuário já tinha excluído:
+  /// puladas de propósito, para a sincronização não desfazer a faxina dele.
+  respeitadas: number;
   total: number;
 }
 
@@ -93,6 +254,10 @@ export interface SyncCategoryTreeResult {
 /// domainId em especial é escolha do usuário via "Descobrir domínio" na UI,
 /// então a sincronização automática nunca grava nem apaga esse campo.
 /// Watches criadas na mão (auto: false) nunca são tocadas por aqui.
+/// Categoria que o usuário excluiu NUNCA volta por aqui: antes de criar
+/// qualquer coisa, a sincronização consulta a lista de descartadas e pula.
+/// É isso que impede a árvore de ressuscitar as 300 categorias que ele acabou
+/// de limpar. Para trazer tudo de volta, existe `clearDiscardedCategories()`.
 export async function syncCategoryTree({
   rootId,
   maxDepth,
@@ -100,49 +265,79 @@ export async function syncCategoryTree({
   rootId: string;
   maxDepth: number;
 }): Promise<SyncCategoryTreeResult> {
-  const nodes = await walkCategoryTree(rootId, maxDepth);
+  const [nodes, descartadas] = await Promise.all([
+    walkCategoryTree(rootId, maxDepth),
+    listDiscardedCategoryIds(),
+  ]);
   const nodeIds = new Set(nodes.map((n) => n.id));
+  const descartadasSet = new Set(descartadas);
 
-  // Categorias que já eram watch automática antes desta sincronização, mas
-  // que sumiram da árvore atual do ML — relatadas, nunca apagadas.
-  const existingAuto = await prisma.watch.findMany({
-    where: { auto: true, categoryId: { not: null } },
-    select: { categoryId: true },
+  const existentes = await prisma.watch.findMany({
+    where: { categoryId: { not: null } },
+    select: { categoryId: true, auto: true },
   });
-  const removidas = existingAuto.filter((w) => w.categoryId && !nodeIds.has(w.categoryId)).length;
+  const porCategoria = new Map(
+    existentes.map((w) => [w.categoryId as string, w.auto] as const),
+  );
 
-  let criadas = 0;
-  let atualizadas = 0;
+  // Categorias que já eram criadas automaticamente antes desta sincronização,
+  // mas que sumiram da árvore atual do ML — relatadas, nunca apagadas.
+  const removidas = existentes.filter(
+    (w) => w.auto && w.categoryId && !nodeIds.has(w.categoryId),
+  ).length;
+
+  const paraCriar: typeof nodes = [];
+  const paraAtualizar: typeof nodes = [];
+  let respeitadas = 0;
 
   for (const node of nodes) {
-    const existing = await prisma.watch.findUnique({ where: { categoryId: node.id } });
-
-    if (!existing) {
-      await prisma.watch.create({
-        data: {
-          label: node.name,
-          categoryId: node.id,
-          query: null,
-          parentCategoryId: node.parentId,
-          depth: node.depth,
-          auto: true,
-          enabled: true,
-          limit: 100,
-          minDiscount: null,
-        },
-      });
-      criadas++;
-    } else if (existing.auto) {
-      await prisma.watch.update({
-        where: { categoryId: node.id },
-        data: { label: node.name, parentCategoryId: node.parentId, depth: node.depth },
-      });
-      atualizadas++;
+    const auto = porCategoria.get(node.id);
+    if (auto === undefined) {
+      // Não existe. Só cria se o usuário não tiver excluído antes.
+      if (descartadasSet.has(node.id)) respeitadas += 1;
+      else paraCriar.push(node);
+      continue;
     }
-    // existing.auto === false -> watch criada na mão, sincronização não mexe.
+    // Criada na mão (auto === false): a sincronização não encosta.
+    if (auto) paraAtualizar.push(node);
   }
 
-  return { criadas, atualizadas, removidas, total: nodes.length };
+  // Em lote: com centenas de categorias, um await por nó travava a tela.
+  if (paraCriar.length > 0) {
+    await prisma.watch.createMany({
+      data: paraCriar.map((node) => ({
+        label: node.name,
+        categoryId: node.id,
+        query: null,
+        parentCategoryId: node.parentId,
+        depth: node.depth,
+        auto: true,
+        enabled: true,
+        limit: 100,
+        minDiscount: null,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  if (paraAtualizar.length > 0) {
+    await prisma.$transaction(
+      paraAtualizar.map((node) =>
+        prisma.watch.update({
+          where: { categoryId: node.id },
+          data: { label: node.name, parentCategoryId: node.parentId, depth: node.depth },
+        }),
+      ),
+    );
+  }
+
+  return {
+    criadas: paraCriar.length,
+    atualizadas: paraAtualizar.length,
+    removidas,
+    respeitadas,
+    total: nodes.length,
+  };
 }
 
 /// Watches em ordem de árvore (pai antes das filhas, alfabético por nível),
