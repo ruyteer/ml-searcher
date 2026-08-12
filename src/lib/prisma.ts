@@ -5,7 +5,7 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-function create() {
+function create(): PrismaClient {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error("DATABASE_URL não configurada");
 
@@ -15,6 +15,25 @@ function create() {
   });
 }
 
-export const prisma = globalForPrisma.prisma ?? create();
+function instance(): PrismaClient {
+  const existing = globalForPrisma.prisma;
+  if (existing) return existing;
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+  const created = create();
+  if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = created;
+  return created;
+}
+
+/// A instanciação é preguiçosa de propósito. `next build` importa as rotas
+/// para coletar configuração, e no build do Docker o DATABASE_URL ainda não
+/// existe: criar o client no topo do módulo derrubava a imagem inteira.
+/// Com o Proxy, o client só nasce na primeira consulta de verdade, que
+/// sempre acontece em runtime, quando a variável já está definida.
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    return Reflect.get(instance() as object, prop, receiver);
+  },
+  has(_target, prop) {
+    return Reflect.has(instance() as object, prop);
+  },
+});
