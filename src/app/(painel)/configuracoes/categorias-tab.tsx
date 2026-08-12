@@ -197,8 +197,10 @@ export function CategoriasTab({ watches, globalMinDiscount }: CategoriasTabProps
           <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
             <HugeiconsIcon icon={IconInfo} size={14} strokeWidth={1.6} className="mt-0.5 shrink-0" aria-hidden="true" />
             <span>
-              <b>Termo de busca está indisponível no momento</b>, o Mercado Livre bloqueou a API de
-              busca para esta aplicação, então a coleta hoje é só por categoria. &quot;Sincronizar
+              Categoria com termo de busca varre o catálogo do Mercado Livre por aquele termo, o que
+              alcança muito mais produto do que os destaques da categoria sozinha. Para o termo não
+              trazer produto de outra área, preencha também o domínio de catálogo: o formulário tem um
+              botão para descobrir o domínio certo a partir do termo digitado. &quot;Sincronizar
               categorias do Mercado Livre&quot; busca a árvore oficial de categorias e cria/atualiza uma
               watch por categoria, sem sobrescrever o que você já ligou, desligou ou ajustou.
             </span>
@@ -257,7 +259,6 @@ export function CategoriasTab({ watches, globalMinDiscount }: CategoriasTabProps
                 const enabled = optimistic[watch.id] ?? watch.enabled;
                 const descendants = getDescendants(watch);
                 const hasChildren = descendants.length > 0;
-                const searchOnly = !watch.categoryId && watch.query;
 
                 return (
                   <TableRow key={watch.id}>
@@ -269,11 +270,6 @@ export function CategoriasTab({ watches, globalMinDiscount }: CategoriasTabProps
                             {!watch.auto && (
                               <Badge variant="secondary" className="text-[10px]">
                                 Manual
-                              </Badge>
-                            )}
-                            {searchOnly && (
-                              <Badge variant="destructive" className="text-[10px]">
-                                Não coleta
                               </Badge>
                             )}
                           </div>
@@ -300,7 +296,14 @@ export function CategoriasTab({ watches, globalMinDiscount }: CategoriasTabProps
                     </TableCell>
                     <TableCell>
                       {watch.query ? (
-                        <span className="text-xs text-muted-foreground">&quot;{watch.query}&quot;</span>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-xs text-muted-foreground">&quot;{watch.query}&quot;</span>
+                          {watch.domainId && (
+                            <span className="font-mono text-[10px] text-muted-foreground/70">
+                              {watch.domainId}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">-</span>
                       )}

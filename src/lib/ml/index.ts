@@ -6,13 +6,39 @@ export {
   ML_API_BASE,
   mlRequest,
   getAccessToken,
+  getAppAccessToken,
+  resolveAccessToken,
+  getTokenSource,
   clearTokenCache,
   getCredentials,
   requireCredentials,
   setMaxConcurrency,
   getMaxConcurrency,
 } from "./client";
-export type { MLErrorCode, MLApiErrorInit, MLCredentials, MLRequestOptions } from "./client";
+export type {
+  MLErrorCode,
+  MLApiErrorInit,
+  MLCredentials,
+  MLRequestOptions,
+  MLTokenSource,
+  ResolvedToken,
+} from "./client";
+
+export {
+  ML_AUTH_ROW_ID,
+  ML_REDIRECT_URI_KEY,
+  getAuthorizeUrl,
+  exchangeCode,
+  refreshAccessToken,
+  getUserToken,
+  getAuthStatus,
+  hasUserConnection,
+  disconnect,
+  clearUserTokenCache,
+  getMlRedirectUri,
+  setMlRedirectUri,
+} from "./auth";
+export type { MLAuthStatus, MLTokenPayload } from "./auth";
 
 export { normalize, normalizeMany } from "./types";
 export type {

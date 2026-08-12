@@ -10,9 +10,17 @@ export interface PriceTagProps {
   discountPct?: number;
   /// A partir daqui o badge de desconto fica em destaque (settings.hotDiscount).
   hotDiscount?: number;
-  size?: "sm" | "default";
+  size?: "sm" | "md" | "default";
   className?: string;
 }
+
+/// "md" é o meio-termo usado no card de oferta compacto: o preço continua
+/// mandando no card sem forçar a largura da coluna.
+const PRICE_SIZES: Record<"sm" | "md" | "default", string> = {
+  sm: "text-sm",
+  md: "text-base",
+  default: "text-lg",
+};
 
 /// Preço atual em destaque + preço de referência riscado + badge de desconto.
 /// O badge fica "quente" (destructive) quando o desconto bate hotDiscount.
@@ -30,7 +38,7 @@ export function PriceTag({
   return (
     <div className={cn("flex flex-col gap-0.5", className)}>
       <div className="flex items-center gap-2">
-        <span className={cn("font-semibold text-foreground", size === "sm" ? "text-sm" : "text-lg")}>
+        <span className={cn("tabular-nums font-semibold text-foreground", PRICE_SIZES[size])}>
           {formatBRL(price)}
         </span>
         {typeof discountPct === "number" && discountPct > 0 && (
@@ -40,7 +48,7 @@ export function PriceTag({
         )}
       </div>
       {hasReference && (
-        <span className="text-xs text-muted-foreground line-through">{formatBRL(referencePrice!)}</span>
+        <span className="text-xs tabular-nums text-muted-foreground line-through">{formatBRL(referencePrice!)}</span>
       )}
     </div>
   );

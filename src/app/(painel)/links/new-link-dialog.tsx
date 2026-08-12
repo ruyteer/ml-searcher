@@ -26,7 +26,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { LinkKind } from "@/generated/prisma";
+import { LinkKind } from "@/lib/enums";
 import { createStandaloneLinkAction } from "./actions";
 import { initialActionState } from "./action-state";
 

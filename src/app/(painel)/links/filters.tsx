@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LinkKind } from "@/generated/prisma";
+import { LinkKind } from "@/lib/enums";
 import { linksSearchParams } from "./search-params";
 
 const KIND_LABELS: Record<string, string> = {

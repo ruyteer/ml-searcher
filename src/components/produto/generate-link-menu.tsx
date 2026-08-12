@@ -16,7 +16,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LinkKind } from "@/generated/prisma";
+import { LinkKind } from "@/lib/enums";
 import { generateLink, type GeneratedLink } from "@/app/(painel)/ofertas/actions";
 import { cn } from "@/lib/utils";
 
