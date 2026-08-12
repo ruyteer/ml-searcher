@@ -39,8 +39,11 @@ export interface MLItem {
   condition?: string | null;
   category_id?: string | null;
   seller?: MLSeller | null;
+  seller_id?: number | null;
   shipping?: MLShipping | null;
   official_store_id?: number | null;
+  /// Produto de catálogo ao qual o anúncio pertence, quando houver.
+  catalog_product_id?: string | null;
 }
 
 export interface MLPaging {
@@ -71,12 +74,95 @@ export interface MLErrorBody {
   cause?: unknown;
 }
 
+// ------------------------------------------------ categorias / destaques / catálogo
+
+export interface MLCategoryRef {
+  id: string;
+  name: string;
+  total_items_in_this_category?: number;
+}
+
+/// Item de /sites/{site}/categories.
+export interface MLRootCategory {
+  id: string;
+  name: string;
+}
+
+/// Resposta de /categories/{id}.
+export interface MLCategoryResponse {
+  id: string;
+  name: string;
+  path_from_root?: MLCategoryRef[];
+  children_categories?: MLCategoryRef[];
+}
+
+export type MLHighlightType = "PRODUCT" | "USER_PRODUCT";
+
+export interface MLHighlightEntry {
+  id: string;
+  position: number;
+  type: MLHighlightType | string;
+}
+
+/// Resposta de /highlights/{site}/category/{id}.
+export interface MLHighlightsResponse {
+  query_data?: { highlight_type?: string; criteria?: string; id?: string };
+  content?: MLHighlightEntry[];
+}
+
+export interface MLProductPicture {
+  id?: string;
+  url?: string | null;
+  secure_url?: string | null;
+}
+
+/// Resposta de /products/{catalogId}. `permalink` costuma vir vazio na
+/// resposta da API — o link utilizável é montado a partir dos ids.
+export interface MLCatalogProduct {
+  id: string;
+  catalog_product_id?: string | null;
+  name: string;
+  family_name?: string | null;
+  status?: string | null;
+  domain_id?: string | null;
+  permalink?: string | null;
+  pictures?: MLProductPicture[] | null;
+  buy_box_winner?: { item_id?: string | null; price?: number | null } | null;
+}
+
+/// Um anúncio de /products/{catalogId}/items. Note que NÃO traz título,
+/// permalink, thumbnail, sold_quantity nem nickname do vendedor.
+export interface MLCatalogListing {
+  item_id: string;
+  seller_id?: number | null;
+  price: number;
+  original_price?: number | null;
+  currency_id?: string | null;
+  condition?: string | null;
+  category_id?: string | null;
+  official_store_id?: number | null;
+  available_quantity?: number | null;
+  sold_quantity?: number | null;
+  tags?: string[] | null;
+  deal_ids?: string[] | null;
+  shipping?: MLShipping | null;
+  inventory_id?: string | null;
+  user_product_id?: string | null;
+}
+
+export interface MLCatalogListingsResponse {
+  paging?: MLPaging;
+  results?: MLCatalogListing[];
+}
+
 // ------------------------------------------------------- formato da aplicação
 
 /// Produto já traduzido para o vocabulário do nosso schema.
 /// Todos os preços em CENTAVOS.
 export interface NormalizedProduct {
   mlId: string;
+  /// Produto de catálogo de origem, quando a coleta veio pelos destaques.
+  catalogId: string | null;
   title: string;
   thumbnail: string | null;
   permalink: string;
@@ -94,6 +180,13 @@ export interface NormalizedProduct {
   officialStore: boolean;
 }
 
+/// /items traz o vendedor aninhado; /products/{id}/items só traz seller_id.
+function sellerIdOf(item: MLItem): string | null {
+  if (item.seller?.id != null) return String(item.seller.id);
+  if (item.seller_id != null) return String(item.seller_id);
+  return null;
+}
+
 function intOrZero(value: number | null | undefined): number {
   return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
 }
@@ -109,6 +202,7 @@ export function normalize(item: MLItem): NormalizedProduct {
 
   return {
     mlId: item.id,
+    catalogId: item.catalog_product_id ?? null,
     title: item.title,
     thumbnail: item.secure_thumbnail ?? item.thumbnail ?? null,
     permalink: item.permalink,
@@ -116,7 +210,7 @@ export function normalize(item: MLItem): NormalizedProduct {
     originalPrice,
     currency: item.currency_id ?? "BRL",
     categoryId: item.category_id ?? null,
-    sellerId: item.seller?.id != null ? String(item.seller.id) : null,
+    sellerId: sellerIdOf(item),
     sellerName: item.seller?.nickname ?? null,
     sellerStatus: item.seller?.seller_reputation?.power_seller_status ?? null,
     freeShipping: item.shipping?.free_shipping === true,

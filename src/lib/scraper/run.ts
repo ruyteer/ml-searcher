@@ -4,13 +4,17 @@
 import type { RunStatus, Watch } from "@/generated/prisma";
 import { prisma } from "../prisma";
 import { getSettings } from "../settings";
-import { isFixtureMode, isMLApiError, searchWatch } from "../ml";
+import { collectForWatch, getCollectionMode, isFixtureMode, isMLApiError } from "../ml";
 import type { NormalizedProduct } from "../ml";
 import { detect } from "./detect";
 import type { PricePoint } from "./detect";
 
 /// Quantos upserts por transação.
 const UPSERT_CHUNK = 25;
+/// O Postgres é remoto (Railway), então o round-trip por upsert pesa: os 5s
+/// padrão do Prisma estouram no meio do chunk. Estes limites são folgados de
+/// propósito — a varredura roda em background, ninguém está esperando.
+const TX_OPTIONS = { timeout: 60_000, maxWait: 20_000 } as const;
 /// Janela do histórico usada como referência.
 const HISTORY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 /// Não recriar a mesma oferta (mesmo produto, mesmo preço) dentro desta janela.
@@ -89,6 +93,7 @@ class RunLog {
 
 function productFields(product: NormalizedProduct, watchId: string, now: Date) {
   return {
+    catalogId: product.catalogId,
     title: product.title,
     thumbnail: product.thumbnail,
     permalink: product.permalink,
@@ -128,8 +133,19 @@ async function processWatch(watch: Watch, ctx: WatchContext): Promise<WatchOutco
   const { log, settings } = ctx;
   const now = new Date();
 
-  const found = await searchWatch(watch, { signal: ctx.signal });
-  log.add(`Watch "${watch.label}": ${found.length} item(ns) retornado(s) pela API.`);
+  const collected = await collectForWatch(watch, { signal: ctx.signal });
+  const found = collected.products;
+
+  // Watch só com termo de busca não tem como ser coletada pelos destaques —
+  // não é falha, é uma limitação conhecida da API enquanto a busca estiver 403.
+  if (collected.skipped) {
+    log.add(`Watch "${watch.label}": ${collected.note}.`);
+    return { itemsSeen: 0, productsNew: 0, offersNew: 0 };
+  }
+
+  log.add(
+    `Watch "${watch.label}": ${collected.note} -> ${found.length} produto(s) para avaliar.`,
+  );
   if (found.length === 0) return { itemsSeen: 0, productsNew: 0, offersNew: 0 };
 
   const mlIds = found.map((p) => p.mlId);
@@ -194,6 +210,7 @@ async function processWatch(watch: Watch, ctx: WatchContext): Promise<WatchOutco
           select: { id: true, mlId: true },
         }),
       ),
+      TX_OPTIONS,
     );
     for (const row of rows) idByMlId.set(row.mlId, row.id);
   }
@@ -324,6 +341,14 @@ export async function runScrape(options: RunScrapeOptions = {}): Promise<RunScra
   const log = new RunLog();
   log.add(`Varredura iniciada (${trigger}) — ${watches.length} watch(es) habilitada(s).`);
   if (fixture) log.add("Modo FIXTURE ativo: dados de exemplo, sem chamadas reais ao Mercado Livre.");
+  else {
+    const mode = await getCollectionMode();
+    log.add(
+      mode === "search"
+        ? "Fonte preferida: busca do ML (será testada; se responder 403 caímos nos destaques por 24h)."
+        : "Fonte preferida: destaques de categoria — a busca do ML está bloqueada (403).",
+    );
+  }
   log.add(
     `Filtros: desconto mínimo ${settings.minDiscount}%, preço mínimo ${settings.minPrice} centavos, ` +
       `${settings.minHistoryPoints} ponto(s) de histórico, ${settings.minSoldQuantity} venda(s).`,
