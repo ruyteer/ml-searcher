@@ -29,22 +29,26 @@ ENV HOSTNAME=0.0.0.0
 
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 
-# O output standalone já traz as dependências que o servidor precisa.
+# O output standalone traz o servidor e as dependências que ele precisa.
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
-# O CLI do Prisma não vem no standalone, mas é necessário para rodar
-# `migrate deploy` na subida do container.
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
-# prisma.config.ts importa dotenv, e ele não faz parte do standalone.
-COPY --from=builder /app/node_modules/dotenv ./node_modules/dotenv
+# O CLI do Prisma roda `migrate deploy` na subida do container e NÃO vem no
+# standalone. Copiamos o node_modules inteiro de propósito: a árvore de
+# dependências do CLI é grande e recortá-la à mão quebra de formas difíceis
+# de prever (já custou três correções seguidas: @prisma/config faltando,
+# dotenv faltando, e o symlink de .bin/prisma virando arquivo solto no COPY).
+# Isso engorda a imagem, e é uma troca consciente por previsibilidade.
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/src/generated ./src/generated
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
 USER nextjs
 EXPOSE 3000
 
-CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && node server.js"]
+# Chamamos o entrypoint real do CLI em vez de node_modules/.bin/prisma:
+# aquele é um symlink, e o COPY do Docker o transformaria num arquivo solto
+# cujo `require("./cli.js")` aponta para dentro de .bin, onde não há nada.
+CMD ["sh", "-c", "node ./node_modules/prisma/build/index.js migrate deploy && node server.js"]
