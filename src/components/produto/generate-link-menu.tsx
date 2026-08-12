@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -69,30 +70,35 @@ export function GenerateLinkMenu({ productId, presells = [], onGenerated, size =
         }
       />
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Tipo de link</DropdownMenuLabel>
-        <DropdownMenuItem onClick={() => run(LinkKind.DIRECT)}>
-          <HugeiconsIcon icon={ExternalLinkIcon} size={15} strokeWidth={1.5} /> Link direto
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => run(LinkKind.TRACKED)}>
-          <HugeiconsIcon icon={Route01Icon} size={15} strokeWidth={1.5} /> Link rastreado
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger disabled={presells.length === 0}>
-            <HugeiconsIcon icon={File02Icon} size={15} strokeWidth={1.5} /> Link com pre-sell
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            {presells.length === 0 ? (
-              <DropdownMenuItem disabled>Nenhuma pre-sell ativa</DropdownMenuItem>
-            ) : (
-              presells.map((presell) => (
-                <DropdownMenuItem key={presell.id} onClick={() => run(LinkKind.PRESELL, presell.id)}>
-                  {presell.title}
-                </DropdownMenuItem>
-              ))
-            )}
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
+        {/* DropdownMenuLabel = Menu.GroupLabel do Base UI: só funciona dentro
+            de um DropdownMenuGroup. Fora do grupo ele lança no clique que abre
+            o menu e derruba a página inteira. */}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Tipo de link</DropdownMenuLabel>
+          <DropdownMenuItem onClick={() => run(LinkKind.DIRECT)}>
+            <HugeiconsIcon icon={ExternalLinkIcon} size={15} strokeWidth={1.5} /> Link direto
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => run(LinkKind.TRACKED)}>
+            <HugeiconsIcon icon={Route01Icon} size={15} strokeWidth={1.5} /> Link rastreado
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger disabled={presells.length === 0}>
+              <HugeiconsIcon icon={File02Icon} size={15} strokeWidth={1.5} /> Link com pre-sell
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              {presells.length === 0 ? (
+                <DropdownMenuItem disabled>Nenhuma pre-sell ativa</DropdownMenuItem>
+              ) : (
+                presells.map((presell) => (
+                  <DropdownMenuItem key={presell.id} onClick={() => run(LinkKind.PRESELL, presell.id)}>
+                    {presell.title}
+                  </DropdownMenuItem>
+                ))
+              )}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -18,10 +18,14 @@ export interface PriceSparklineProps {
 /// Mini gráfico de histórico de preço (últimos 30 dias) usado nos cards de
 /// oferta. Sem eixos visíveis — só a forma da curva importa aqui.
 export function PriceSparkline({ data, height = 40, className }: PriceSparklineProps) {
+  // Menos de dois pontos não formam curva. Melhor dizer isso do que desenhar
+  // uma linha reta que o usuário leria como "o preço nunca mudou".
   if (data.length < 2) {
     return (
       <div className={cn("flex items-center text-xs text-muted-foreground", className)} style={{ height }}>
-        Histórico insuficiente
+        {data.length === 0
+          ? "Ainda não registramos preços deste produto."
+          : "Só temos uma leitura de preço até agora."}
       </div>
     );
   }

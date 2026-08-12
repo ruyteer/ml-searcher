@@ -10,10 +10,10 @@ export async function OffersStats() {
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <StatCard label="Ofertas novas hoje" value={stats.newToday.toLocaleString("pt-BR")} icon={IconOfertas} />
-      <StatCard label="Desconto médio" value={`${stats.avgDiscount}%`} icon={IconDesconto} />
-      <StatCard label="Melhor desconto" value={`${stats.bestDiscount}%`} icon={IconEmAlta} />
+      <StatCard label="Desconto médio das novas" value={`${stats.avgDiscount}%`} icon={IconDesconto} />
+      <StatCard label="Maior desconto das novas" value={`${stats.bestDiscount}%`} icon={IconEmAlta} />
       <StatCard
-        label="Total monitorado"
+        label="Produtos acompanhados"
         value={stats.totalMonitored.toLocaleString("pt-BR")}
         icon={IconEstoque}
       />

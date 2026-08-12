@@ -1,4 +1,11 @@
-import { createLoader, parseAsFloat, parseAsInteger, parseAsString, parseAsStringEnum } from "nuqs/server";
+import {
+  createLoader,
+  parseAsBoolean,
+  parseAsFloat,
+  parseAsInteger,
+  parseAsString,
+  parseAsStringEnum,
+} from "nuqs/server";
 import type { BlockedFilter, ProductFilters, ProductSort, SortDir } from "@/lib/data/products";
 
 export const PRODUCTS_PAGE_SIZE = 20;
@@ -18,11 +25,17 @@ export const productsParsers = {
   sort: parseAsStringEnum<ProductSort>(SORT_VALUES).withDefault("lastSeen"),
   sortDir: parseAsStringEnum<SortDir>(DIR_VALUES).withDefault("desc"),
   page: parseAsInteger.withDefault(1),
+  /// Escape hatch consciente: o usuário pediu para ver o catálogo inteiro,
+  /// sem escolher categoria. Sem isto a página abre convidando a escolher, em
+  /// vez de despejar dezenas de milhares de linhas.
+  tudo: parseAsBoolean.withDefault(false),
 };
 
 export const loadProductsParams = createLoader(productsParsers);
 
-export function toProductFilters(params: Awaited<ReturnType<typeof loadProductsParams>>): ProductFilters {
+export type ProductsParams = Awaited<ReturnType<typeof loadProductsParams>>;
+
+export function toProductFilters(params: ProductsParams): ProductFilters {
   return {
     search: params.search,
     watchId: params.watchId || null,
@@ -34,4 +47,16 @@ export function toProductFilters(params: Awaited<ReturnType<typeof loadProductsP
     page: Math.max(1, params.page),
     pageSize: PRODUCTS_PAGE_SIZE,
   };
+}
+
+/// A listagem só aparece quando o usuário disse o que quer ver: uma categoria,
+/// uma busca por nome, a lista de bloqueados ou "ver tudo" explicitamente.
+/// Fora isso a página abre no seletor de categorias.
+export function shouldListProducts(params: ProductsParams): boolean {
+  return (
+    params.tudo ||
+    Boolean(params.watchId) ||
+    params.search.trim().length > 0 ||
+    params.blocked === "blocked"
+  );
 }

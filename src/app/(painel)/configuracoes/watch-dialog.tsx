@@ -41,7 +41,7 @@ interface WatchDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/// Cria ou edita uma categoria monitorada (Watch). O pai remonta este
+/// Cria ou edita uma categoria monitorada. O pai remonta este
 /// componente via `key` a cada abertura — evita defaultValue "grudado" de
 /// uma edição anterior quando o dialog é reaberto com outro alvo.
 export function WatchDialog({ open, watch, onOpenChange }: WatchDialogProps) {
@@ -96,10 +96,10 @@ export function WatchDialog({ open, watch, onOpenChange }: WatchDialogProps) {
           <DialogHeader>
             <DialogTitle>{isEdit ? "Editar categoria monitorada" : "Nova categoria monitorada"}</DialogTitle>
             <DialogDescription>
-              O ID de categoria do Mercado Livre identifica uma categoria oficial (ex.: MLB1246 = Beleza
-              e Cuidado Pessoal). Preenchendo um termo de busca, a coleta passa a varrer o catálogo do
-              Mercado Livre por esse termo, o que alcança muito mais produto do que só os destaques da
-              categoria.
+              O código de categoria do Mercado Livre identifica uma categoria oficial (ex.: MLB264787 =
+              Barbearia). Preenchendo um termo de busca, a coleta passa a varrer o catálogo do
+              Mercado Livre por esse termo, o que alcança muito mais produto do que só os destaques
+              da categoria.
             </DialogDescription>
           </DialogHeader>
 
@@ -116,11 +116,11 @@ export function WatchDialog({ open, watch, onOpenChange }: WatchDialogProps) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
-              label="ID de categoria"
+              label="Código da categoria"
               name="categoryId"
               value={categoryId}
               onValueChange={(v) => setCategoryId(maskCategoryId(v))}
-              placeholder="Ex.: MLB1246"
+              placeholder="Ex.: MLB264787"
               help="Prefixo do site (MLB, MLA...) seguido de números."
               error={err("categoryId")}
             />
@@ -136,8 +136,8 @@ export function WatchDialog({ open, watch, onOpenChange }: WatchDialogProps) {
 
           <FieldShell
             id="watch-domainId"
-            label="Domínio de catálogo (opcional)"
-            hint="Sem domínio, a busca varre o catálogo inteiro e pode trazer produto de outra área, gastando chamada à API à toa. Com domínio, ela já sai filtrada na origem: gasta menos e acha mais oferta boa. Descubra o domínio certo a partir do termo de busca ao lado ou digite na mão."
+            label="Tipo de produto (opcional)"
+            hint="Sem o tipo de produto, a busca varre o catálogo inteiro e pode trazer coisa de outra área. Com ele, a busca já sai filtrada na origem: acha mais oferta boa em menos tempo. Descubra o tipo certo a partir do termo de busca ao lado ou digite na mão."
             error={err("domainId")}
           >
             <div className="flex items-center gap-2">
@@ -156,10 +156,10 @@ export function WatchDialog({ open, watch, onOpenChange }: WatchDialogProps) {
                   variant="ghost"
                   size="icon-sm"
                   onClick={() => setDomainId("")}
-                  title="Limpar domínio"
+                  title="Limpar tipo de produto"
                 >
                   <HugeiconsIcon icon={IconFechar} size={14} strokeWidth={1.6} aria-hidden="true" />
-                  <span className="sr-only">Limpar domínio</span>
+                  <span className="sr-only">Limpar tipo de produto</span>
                 </Button>
               )}
             </div>
@@ -180,7 +180,7 @@ export function WatchDialog({ open, watch, onOpenChange }: WatchDialogProps) {
                 ) : (
                   <HugeiconsIcon icon={IconBuscar} size={14} strokeWidth={1.6} aria-hidden="true" />
                 )}
-                {discovering ? "Buscando domínios..." : "Descobrir domínio"}
+                {discovering ? "Buscando..." : "Descobrir tipo de produto"}
               </Button>
               {!query.trim() && (
                 <span className="text-xs text-muted-foreground">Digite o termo de busca acima primeiro.</span>
@@ -190,8 +190,8 @@ export function WatchDialog({ open, watch, onOpenChange }: WatchDialogProps) {
             {suggestDiscovery && !discovering && (
               <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
                 <HugeiconsIcon icon={IconInfo} size={13} strokeWidth={1.6} className="mt-0.5 shrink-0" aria-hidden="true" />
-                Dica: esta watch tem termo de busca mas nenhum domínio. Descubra um domínio para restringir
-                a busca e evitar produto fora do nicho.
+                Dica: esta categoria tem termo de busca mas nenhum tipo de produto. Descubra o tipo para
+                restringir a busca e evitar produto fora do nicho.
               </p>
             )}
 
@@ -204,7 +204,7 @@ export function WatchDialog({ open, watch, onOpenChange }: WatchDialogProps) {
             {domainOptions && (
               domainOptions.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
-                  Nenhum domínio encontrado para &quot;{query}&quot;. Pode digitar o domínio na mão, se souber, ou
+                  Nenhum tipo de produto encontrado para &quot;{query}&quot;. Pode digitar na mão, se souber, ou
                   deixar o campo vazio para buscar sem filtro.
                 </p>
               ) : (
@@ -221,7 +221,7 @@ export function WatchDialog({ open, watch, onOpenChange }: WatchDialogProps) {
                           <span className="text-sm">{option.domainName}</span>
                           {option.beauty && (
                             <Badge variant="secondary" className="text-[10px]">
-                              Beleza e Cuidado Pessoal
+                              Dentro do nicho
                             </Badge>
                           )}
                         </span>

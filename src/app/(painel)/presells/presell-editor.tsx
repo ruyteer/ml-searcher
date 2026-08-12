@@ -5,12 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { IconSucesso, IconCarregando, IconErroCirculo } from "@/components/icons";
+import { IconSucesso, IconCarregando, IconErroCirculo, IconInfo } from "@/components/icons";
 import { PageHeader } from "@/components/shell/page-header";
 import { Section } from "@/components/shell/section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { MoneyInput } from "@/components/form/money-input";
 import { UrlInput } from "@/components/form/url-input";
@@ -19,6 +20,8 @@ import { IntegerInput } from "@/components/form/integer-input";
 import { centsToMasked, moneyToCents } from "@/lib/mask";
 import { LinkPicker } from "./link-picker";
 import { PresellPreview } from "./presell-preview";
+import { PresellVariableChips, UnknownVariableWarning } from "./presell-variable-chips";
+import type { PresellProduct, PresellVariableName } from "./presell-template";
 import { upsertPresellAction, checkSlugAvailableAction, slugifyAction } from "./actions";
 import { initialActionState } from "./action-state";
 import type { EligibleLink, PresellForEdit } from "@/lib/data/presells";
@@ -27,6 +30,8 @@ interface PresellEditorProps {
   mode: "create" | "edit";
   presell?: PresellForEdit;
   eligibleLinks: EligibleLink[];
+  /// Produtos reais do banco para ver o modelo funcionando.
+  previewProducts: PresellProduct[];
 }
 
 function centsToInputValue(cents: number | null): string {
@@ -45,7 +50,29 @@ function statusForSlug(value: string): SlugStatus {
   return SLUG_FORMAT_RE.test(value) ? "checking" : "invalid";
 }
 
-export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorProps) {
+/// Escreve o marcador na posição do cursor de um campo de texto e devolve o
+/// foco para lá — mesmo comportamento do editor de mensagens.
+function insertAtCursor(
+  el: HTMLInputElement | HTMLTextAreaElement | null,
+  current: string,
+  token: string,
+  apply: (next: string) => void,
+) {
+  if (!el) {
+    apply(`${current}${token}`);
+    return;
+  }
+  const start = el.selectionStart ?? current.length;
+  const end = el.selectionEnd ?? current.length;
+  apply(`${current.slice(0, start)}${token}${current.slice(end)}`);
+  requestAnimationFrame(() => {
+    el.focus();
+    const cursor = start + token.length;
+    el.setSelectionRange(cursor, cursor);
+  });
+}
+
+export function PresellEditor({ mode, presell, eligibleLinks, previewProducts }: PresellEditorProps) {
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(upsertPresellAction, initialActionState);
 
@@ -53,7 +80,7 @@ export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorPro
   const [slug, setSlug] = useState(presell?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(mode === "edit");
   // computado sincronamente (sem efeito) — o valor inicial já reflete se há
-  // slug pré-preenchido (edição) esperando a checagem assíncrona.
+  // endereço pré-preenchido (edição) esperando a checagem assíncrona.
   const [slugStatus, setSlugStatus] = useState<SlugStatus>(() => statusForSlug(presell?.slug ?? ""));
 
   const [headline, setHeadline] = useState(presell?.headline ?? "");
@@ -67,13 +94,21 @@ export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorPro
   const [gateUrl, setGateUrl] = useState(presell?.gateUrl ?? "");
   const [gateLabel, setGateLabel] = useState(presell?.gateLabel ?? "Acessar link do patrocinador");
   const [gateDelay, setGateDelay] = useState(presell?.gateDelay ?? 5);
+  const [isDefault, setIsDefault] = useState(presell?.isDefault ?? false);
   const [hasExitLink, setHasExitLink] = useState(Boolean(presell?.exitLinkId));
 
+  const [previewProductId, setPreviewProductId] = useState<string | null>(
+    previewProducts[0]?.id ?? null,
+  );
+
+  const headlineRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const imageRef = useRef<HTMLInputElement>(null);
   const titleDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slugDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // sugere o slug a partir do título enquanto o usuário não editar o campo
-  // slug manualmente.
+  // sugere o endereço a partir do nome enquanto o usuário não editar o campo
+  // manualmente.
   useEffect(() => {
     if (slugTouched) return;
     if (titleDebounce.current) clearTimeout(titleDebounce.current);
@@ -107,7 +142,7 @@ export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorPro
 
   useEffect(() => {
     if (state.success) {
-      toast.success("Pre-sell salva.");
+      toast.success("Modelo salvo.");
       if (mode === "create" && state.presellId) {
         router.push(`/presells/${state.presellId}`);
       } else {
@@ -121,11 +156,18 @@ export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorPro
 
   const fieldError = (name: string) => state.fieldErrors?.[name]?.[0];
 
+  const insertInHeadline = (name: PresellVariableName) =>
+    insertAtCursor(headlineRef.current, headline, `{{${name}}}`, setHeadline);
+  const insertInBody = (name: PresellVariableName) =>
+    insertAtCursor(bodyRef.current, body, `{{${name}}}`, setBody);
+  const insertInImage = (name: PresellVariableName) =>
+    insertAtCursor(imageRef.current, imageUrl, `{{${name}}}`, setImageUrl);
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title={mode === "create" ? "Nova pre-sell" : "Editar pre-sell"}
-        description="O formulário à esquerda atualiza o preview ao vivo à direita conforme você digita."
+        title={mode === "create" ? "Novo modelo de página" : "Editar modelo de página"}
+        description="Um modelo só atende quantos produtos você quiser. O que você deixar em branco é preenchido com os dados do produto na hora que alguém abre o link."
         actions={
           <>
             <Button variant="outline" render={<Link href="/presells" />}>
@@ -138,19 +180,49 @@ export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorPro
         }
       />
 
+      <div className="flex items-start gap-2.5 rounded-xl border border-border bg-muted/40 p-3.5 text-sm">
+        <HugeiconsIcon
+          icon={IconInfo}
+          size={18}
+          strokeWidth={1.6}
+          className="mt-0.5 shrink-0 text-muted-foreground"
+          aria-hidden="true"
+        />
+        <p className="text-muted-foreground">
+          Você não precisa criar um modelo por produto. Monte este uma vez e, na tela de ofertas,
+          gere quantos links quiser apontando para ele. Cada link mostra a foto, o nome e o preço do
+          seu próprio produto.
+          {presell && presell.linkCount > 0 && (
+            <>
+              {" "}
+              <strong className="text-foreground">
+                {presell.linkCount === 1
+                  ? "1 link já usa este modelo."
+                  : `${presell.linkCount} links já usam este modelo.`}
+              </strong>
+            </>
+          )}
+        </p>
+      </div>
+
       <form id="presell-form" action={formAction} className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {presell?.id && <input type="hidden" name="id" value={presell.id} />}
+        <input type="hidden" name="isDefault" value={isDefault ? "1" : "0"} />
 
         <div className="flex flex-col gap-5">
-          <Section title="Conteúdo">
+          <Section
+            title="Identificação"
+            description="Só você vê o nome. O endereço é a parte final do link que você vai colar no WhatsApp."
+          >
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="title">Título (uso interno)</Label>
+                <Label htmlFor="title">Nome do modelo</Label>
                 <Input
                   id="title"
                   name="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Ex.: Aquecimento padrão"
                   required
                   maxLength={200}
                 />
@@ -158,7 +230,7 @@ export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorPro
               </div>
 
               <SlugInput
-                label="Slug"
+                label="Endereço do link"
                 name="slug"
                 value={slug}
                 onValueChange={(v) => {
@@ -166,23 +238,43 @@ export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorPro
                   setSlug(v);
                   setSlugStatus(statusForSlug(v));
                 }}
-                required
                 maxLength={80}
-                hint="Letras minúsculas, números e hífen entre as palavras."
+                hint="Letras minúsculas, números e hífen entre as palavras. Serve para abrir o modelo sozinho, sem produto."
                 error={fieldError("slug")}
                 addon={<SlugStatusBadge status={slugStatus} />}
               />
 
+              <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-3">
+                <div className="flex flex-col gap-0.5">
+                  <Label htmlFor="isDefault">Usar este modelo por padrão</Label>
+                  <span className="text-xs text-muted-foreground">
+                    Quando você gerar um link com página de aquecimento e não escolher o modelo,
+                    este é o que vale. Só um modelo pode ficar marcado.
+                  </span>
+                </div>
+                <Switch id="isDefault" checked={isDefault} onCheckedChange={setIsDefault} />
+              </div>
+            </div>
+          </Section>
+
+          <Section
+            title="Conteúdo da página"
+            description="Deixe em branco para usar o dado do produto. Use os botões para misturar texto seu com os dados do produto."
+          >
+            <div className="flex flex-col gap-5">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="headline">Headline</Label>
+                <Label htmlFor="headline">Chamada principal</Label>
+                <PresellVariableChips onInsert={insertInHeadline} />
                 <Input
                   id="headline"
                   name="headline"
+                  ref={headlineRef}
                   value={headline}
                   onChange={(e) => setHeadline(e.target.value)}
-                  required
+                  placeholder="Em branco = o nome do produto"
                   maxLength={300}
                 />
+                <UnknownVariableWarning text={headline} />
                 {fieldError("headline") && (
                   <p className="text-xs text-destructive">{fieldError("headline")}</p>
                 )}
@@ -190,14 +282,35 @@ export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorPro
 
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="body">Texto de apoio</Label>
+                <PresellVariableChips onInsert={insertInBody} />
                 <Textarea
                   id="body"
                   name="body"
+                  ref={bodyRef}
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
+                  placeholder={"Ex.: Só hoje por {{preco}}. Antes era {{precoAntigo}}."}
                   rows={4}
                   maxLength={4000}
                 />
+                <UnknownVariableWarning text={body} />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="imageUrl">Foto</Label>
+                <PresellVariableChips onInsert={insertInImage} only={["imagem"]} />
+                <Input
+                  id="imageUrl"
+                  name="imageUrl"
+                  ref={imageRef}
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="Em branco = a foto do produto"
+                  maxLength={2000}
+                />
+                {fieldError("imageUrl") && (
+                  <p className="text-xs text-destructive">{fieldError("imageUrl")}</p>
+                )}
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -211,28 +324,22 @@ export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorPro
                   maxLength={60}
                 />
               </div>
-
-              <UrlInput
-                label="URL da imagem"
-                name="imageUrl"
-                value={imageUrl}
-                onValueChange={setImageUrl}
-                placeholder="https://..."
-                error={fieldError("imageUrl")}
-              />
             </div>
           </Section>
 
-          <Section title="Preço na vitrine" description="Opcional. Valores em reais, salvos em centavos.">
+          <Section
+            title="Preço na página"
+            description="Deixe os dois em branco para mostrar sempre o preço do produto do link. Preencha só se quiser um valor fixo para todos."
+          >
             <div className="grid grid-cols-2 gap-4">
               <MoneyInput
-                label="Preço"
+                label="Preço fixo"
                 name="priceLabelReais"
                 value={priceLabelReais}
                 onValueChange={setPriceLabelReais}
               />
               <MoneyInput
-                label='Preço "de"'
+                label='Preço fixo "de"'
                 name="originalLabelReais"
                 value={originalLabelReais}
                 onValueChange={setOriginalLabelReais}
@@ -241,12 +348,12 @@ export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorPro
           </Section>
 
           <Section
-            title="Gate"
-            description="Passo intermediário antes do botão final. Deixe a URL vazia pra pular esse passo."
+            title="Passo do parceiro"
+            description="Página intermediária que a pessoa abre antes de liberar a oferta. Deixe o endereço vazio para pular esse passo."
           >
             <div className="flex flex-col gap-4">
               <UrlInput
-                label="URL do parceiro"
+                label="Endereço do parceiro"
                 name="gateUrl"
                 placeholder="https://..."
                 value={gateUrl}
@@ -254,7 +361,7 @@ export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorPro
                 error={fieldError("gateUrl")}
               />
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="gateLabel">Rótulo do botão do gate</Label>
+                <Label htmlFor="gateLabel">Texto do botão do parceiro</Label>
                 <Input
                   id="gateLabel"
                   name="gateLabel"
@@ -276,8 +383,8 @@ export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorPro
           </Section>
 
           <Section
-            title="Link de saída"
-            description="A página pública precisa de um link associado pra exibir o botão final."
+            title="Quando abrirem o modelo sem produto"
+            description="Opcional. Vale só para quem abrir o endereço acima direto no navegador. Os links gerados na tela de ofertas já levam ao produto deles e não usam nada daqui."
           >
             <LinkPicker
               eligibleLinks={eligibleLinks}
@@ -291,19 +398,22 @@ export function PresellEditor({ mode, presell, eligibleLinks }: PresellEditorPro
 
         <div className="lg:sticky lg:top-20 lg:self-start">
           <PresellPreview
-            data={{
-              title: title || "Nova pre-sell",
+            template={{
+              title: title || "Novo modelo",
               headline,
               body,
               ctaText,
               imageUrl,
-              priceLabelCents: priceLabelReais ? moneyToCents(priceLabelReais) : null,
-              originalLabelCents: originalLabelReais ? moneyToCents(originalLabelReais) : null,
+              priceLabel: priceLabelReais ? moneyToCents(priceLabelReais) : null,
+              originalLabel: originalLabelReais ? moneyToCents(originalLabelReais) : null,
               gateUrl,
               gateLabel,
               gateDelay,
-              hasExitLink,
             }}
+            products={previewProducts}
+            productId={previewProductId}
+            onProductChange={setPreviewProductId}
+            hasExitLink={hasExitLink}
           />
         </div>
       </form>

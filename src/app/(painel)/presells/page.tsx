@@ -12,10 +12,10 @@ export default function PresellsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Pre-sells"
-        description="Páginas intermediárias que aquecem o clique antes de mandar pro Mercado Livre."
+        description="Modelos de página que aquecem o clique antes de mandar pro Mercado Livre. Um modelo atende quantos produtos você quiser: a foto, o nome e o preço saem do produto de cada link."
         actions={
           <Button render={<Link href="/presells/novo" />}>
-            <HugeiconsIcon icon={IconAdicionar} size={16} strokeWidth={1.8} aria-hidden="true" /> Nova pre-sell
+            <HugeiconsIcon icon={IconAdicionar} size={16} strokeWidth={1.8} aria-hidden="true" /> Novo modelo
           </Button>
         }
       />

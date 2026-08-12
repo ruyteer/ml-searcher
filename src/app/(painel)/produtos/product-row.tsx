@@ -13,25 +13,20 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ProductThumb } from "@/components/produto/product-thumb";
 import { PriceTag } from "@/components/produto/price-tag";
+import { PriceComparison } from "@/components/produto/price-comparison";
 import { GenerateLinkMenu } from "@/components/produto/generate-link-menu";
 import { CopyButton } from "@/components/produto/copy-button";
-import { formatBRL, formatDateTime } from "@/lib/format";
+import {
+  linkKindLabel,
+  offerStatusLabel,
+  opportunityCopy,
+  OPPORTUNITY_EXPLAIN,
+} from "@/components/produto/offer-language";
+import { discountPct, formatBRL, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { getProductDetail, setProductBlocked } from "@/app/(painel)/produtos/actions";
 import type { ProductDetail, ProductListItem } from "@/lib/data/products";
 import type { PresellOption } from "@/components/produto/generate-link-menu";
-
-const OFFER_STATUS_LABEL: Record<string, string> = {
-  NEW: "Nova",
-  PUBLISHED: "Publicada",
-  IGNORED: "Ignorada",
-};
-
-const LINK_KIND_LABEL: Record<string, string> = {
-  DIRECT: "Direto",
-  TRACKED: "Rastreado",
-  PRESELL: "Pre-sell",
-};
 
 /// Linha da tabela de /produtos. Clicar abre um Sheet com o detalhe completo,
 /// carregado sob demanda (getProductDetail) na primeira abertura. `presells`
@@ -126,7 +121,16 @@ export function ProductRow({ product, presells }: { product: ProductListItem; pr
               </div>
             ) : (
               <>
-                <PriceTag price={detail.price} referencePrice={detail.originalPrice} />
+                {detail.originalPrice && detail.originalPrice > detail.price ? (
+                  <PriceComparison
+                    price={detail.price}
+                    referencePrice={detail.originalPrice}
+                    referenceKind="ML_ORIGINAL"
+                    discountPct={discountPct(detail.price, detail.originalPrice)}
+                  />
+                ) : (
+                  <PriceTag price={detail.price} />
+                )}
 
                 <div className="flex flex-wrap items-center gap-1.5">
                   <a href={detail.permalink} target="_blank" rel="noreferrer">
@@ -157,7 +161,11 @@ export function ProductRow({ product, presells }: { product: ProductListItem; pr
                 <div>
                   <h4 className="mb-2 text-sm font-medium text-foreground">Histórico de preço</h4>
                   {detail.history.length < 2 ? (
-                    <p className="text-xs text-muted-foreground">Histórico insuficiente ainda.</p>
+                    <p className="text-xs text-muted-foreground">
+                      Ainda não dá para desenhar o gráfico: temos {detail.history.length === 0 ? "nenhuma" : "só uma"}{" "}
+                      leitura de preço deste produto. Começamos a acompanhar em{" "}
+                      {formatDateTime(detail.firstSeenAt)} e cada varredura acrescenta um ponto.
+                    </p>
                   ) : (
                     <div className="h-48">
                       <ResponsiveContainer width="100%" height="100%">
@@ -208,28 +216,42 @@ export function ProductRow({ product, presells }: { product: ProductListItem; pr
                 <Separator />
 
                 <div>
-                  <h4 className="mb-2 text-sm font-medium text-foreground">
-                    Ofertas detectadas ({detail.offers.length})
+                  <h4 className="text-sm font-medium text-foreground">
+                    Vezes em que virou oferta ({detail.offers.length})
                   </h4>
+                  <p className="mb-2 text-[11px] text-muted-foreground">{OPPORTUNITY_EXPLAIN}</p>
                   {detail.offers.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">Nenhuma oferta detectada ainda.</p>
+                    <p className="text-xs text-muted-foreground">
+                      Este produto ainda não teve queda de preço suficiente para aparecer na tela de ofertas.
+                    </p>
                   ) : (
                     <div className="flex flex-col gap-1.5">
-                      {detail.offers.map((offer) => (
-                        <div
-                          key={offer.id}
-                          className="flex items-center justify-between rounded-lg border border-border px-2.5 py-1.5 text-xs"
-                        >
-                          <span className="text-muted-foreground">{formatDateTime(offer.detectedAt)}</span>
-                          <span className="font-medium text-foreground">
-                            {formatBRL(offer.price)} (-{offer.discountPct}%)
-                          </span>
-                          <span className="text-muted-foreground">score {offer.score}</span>
-                          <Badge variant={offer.status === "PUBLISHED" ? "default" : "outline"}>
-                            {OFFER_STATUS_LABEL[offer.status] ?? offer.status}
-                          </Badge>
-                        </div>
-                      ))}
+                      {detail.offers.map((offer) => {
+                        const opportunity = opportunityCopy(offer.score);
+                        return (
+                          <div
+                            key={offer.id}
+                            className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-lg border border-border px-2.5 py-1.5 text-xs"
+                          >
+                            <span className="text-muted-foreground">{formatDateTime(offer.detectedAt)}</span>
+                            <span className="flex items-center gap-1.5">
+                              <span className="tabular-nums text-muted-foreground line-through">
+                                {formatBRL(offer.referencePrice)}
+                              </span>
+                              <span className="font-medium tabular-nums text-foreground">
+                                {formatBRL(offer.price)}
+                              </span>
+                              <span className="tabular-nums text-success">-{offer.discountPct}%</span>
+                            </span>
+                            <span className={cn("tabular-nums", opportunity.tone)}>
+                              oportunidade {opportunity.label.toLowerCase()} ({offer.score} de 100)
+                            </span>
+                            <Badge variant={offer.status === "PUBLISHED" ? "default" : "outline"}>
+                              {offerStatusLabel(offer.status)}
+                            </Badge>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -248,12 +270,18 @@ export function ProductRow({ product, presells }: { product: ProductListItem; pr
                           className="flex items-center justify-between gap-2 rounded-lg border border-border px-2.5 py-1.5 text-xs"
                         >
                           <div className="flex min-w-0 flex-col gap-0.5">
-                            <span className="truncate font-medium text-foreground">{link.label || link.slug}</span>
+                            <span
+                              className="truncate font-medium text-foreground"
+                              title={`Endereço do link: ${link.slug}`}
+                            >
+                              {link.label || link.slug}
+                            </span>
                             <span className="flex items-center gap-1 text-muted-foreground">
                               <Badge variant="outline" className="text-[10px]">
-                                {LINK_KIND_LABEL[link.kind] ?? link.kind}
+                                {linkKindLabel(link.kind)}
                               </Badge>
-                              <HugeiconsIcon icon={MouseLeftClick01Icon} size={12} strokeWidth={1.5} /> {link.clickCount}
+                              <HugeiconsIcon icon={MouseLeftClick01Icon} size={12} strokeWidth={1.5} />
+                              {link.clickCount} {link.clickCount === 1 ? "clique" : "cliques"}
                             </span>
                           </div>
                           <CopyButton size="icon-sm" label="" getUrl={() => link.url} />

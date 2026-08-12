@@ -84,3 +84,120 @@ export async function generateLink(input: GenerateLinkInput): Promise<GeneratedL
 
   return { id: link.id, slug: link.slug, kind: link.kind, url };
 }
+
+// ------------------------------------------------- histórico de preço (Sheet)
+
+/// Janela padrão do gráfico. 90 dias cobre bem mais que os 30 do sparkline
+/// do card sem virar um paredão de pontos.
+const TIMELINE_DAYS = 90;
+/// Teto de pontos plotados. O histórico ganha uma linha por varredura, então
+/// um produto antigo pode ter milhares: cortamos no banco (take), nunca em JS.
+const TIMELINE_MAX_POINTS = 240;
+
+export interface PriceTimelinePoint {
+  price: number;
+  capturedAt: string;
+}
+
+export interface PriceTimelineOffer {
+  id: string;
+  price: number;
+  referencePrice: number;
+  referenceKind: string;
+  discountPct: number;
+  score: number;
+  status: OfferStatus;
+  detectedAt: string;
+}
+
+export interface PriceTimeline {
+  productId: string;
+  title: string;
+  /// Preço atual do anúncio, em centavos.
+  currentPrice: number;
+  /// Quando o produto entrou no painel pela primeira vez.
+  firstSeenAt: string;
+  /// Dias cobertos pelo gráfico.
+  days: number;
+  /// Pontos em ordem cronológica, já limitados a TIMELINE_MAX_POINTS.
+  points: PriceTimelinePoint[];
+  /// Quantas capturas existem no período (pode ser maior que points.length).
+  pointsInPeriod: number;
+  /// Menor/maior preço do período, agregados no banco.
+  minPrice: number | null;
+  maxPrice: number | null;
+  /// Momentos em que o produto virou oferta dentro do período.
+  offers: PriceTimelineOffer[];
+}
+
+/// Carrega o histórico de preço de um produto para o Sheet "Ver histórico de
+/// preço". Devolve também as ofertas detectadas no período, pra marcar no
+/// gráfico em que momentos o produto virou oferta. Min e max saem de um
+/// aggregate no banco, não de um Math.min sobre um array gigante.
+export async function getPriceTimeline(productId: string): Promise<PriceTimeline | null> {
+  const since = new Date(Date.now() - TIMELINE_DAYS * 24 * 60 * 60 * 1000);
+
+  const [product, recentPoints, aggregate, offers] = await Promise.all([
+    prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true, title: true, price: true, firstSeenAt: true },
+    }),
+    prisma.priceHistory.findMany({
+      where: { productId, capturedAt: { gte: since } },
+      orderBy: { capturedAt: "desc" },
+      take: TIMELINE_MAX_POINTS,
+      select: { price: true, capturedAt: true },
+    }),
+    prisma.priceHistory.aggregate({
+      where: { productId, capturedAt: { gte: since } },
+      _min: { price: true },
+      _max: { price: true },
+      _count: { _all: true },
+    }),
+    prisma.offer.findMany({
+      where: { productId, detectedAt: { gte: since } },
+      orderBy: { detectedAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        price: true,
+        referencePrice: true,
+        referenceKind: true,
+        discountPct: true,
+        score: true,
+        status: true,
+        detectedAt: true,
+      },
+    }),
+  ]);
+
+  if (!product) return null;
+
+  return {
+    productId: product.id,
+    title: product.title,
+    currentPrice: product.price,
+    firstSeenAt: product.firstSeenAt.toISOString(),
+    days: TIMELINE_DAYS,
+    // findMany veio do mais novo pro mais antigo (pra o take pegar o final da
+    // série); o gráfico precisa da ordem cronológica.
+    points: recentPoints
+      .map((p) => ({ price: p.price, capturedAt: p.capturedAt.toISOString() }))
+      .reverse(),
+    pointsInPeriod: aggregate._count._all,
+    minPrice: aggregate._min.price,
+    maxPrice: aggregate._max.price,
+    offers: offers
+      .map((o) => ({
+        id: o.id,
+        price: o.price,
+        referencePrice: o.referencePrice,
+        referenceKind: o.referenceKind,
+        discountPct: o.discountPct,
+        score: o.score,
+        status: o.status,
+        detectedAt: o.detectedAt.toISOString(),
+      }))
+      .reverse(),
+  };
+}

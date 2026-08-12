@@ -7,6 +7,12 @@ import { mlRequest, isMLApiError } from "./client";
 import type { MLCategoryRef, MLCategoryResponse, MLRootCategory } from "./types";
 
 /// Beleza e Cuidado Pessoal — raiz do nicho (verificado contra a API).
+///
+/// ATENÇÃO: a raiz sozinha NÃO define o nicho. Ela contém Maquiagem, Manicure
+/// e Pedicure, Depilação e Farmácia (onde mora "Cuidado Sexual"), e aceitar
+/// qualquer coisa abaixo dela era exatamente o que deixava passar produto
+/// feminino e íntimo. Quem decide agora é a dupla lista de permitidas /
+/// bloqueadas mais abaixo.
 export const BEAUTY_ROOT = "MLB1246";
 
 /// Subcategorias verificadas de MLB1246, usadas como referência ao montar
@@ -25,6 +31,152 @@ export const BEAUTY_SUBCATEGORIES = {
 } as const;
 
 export type BeautySubcategory = keyof typeof BEAUTY_SUBCATEGORIES;
+
+// -------------------------------------------------- nicho: cuidado masculino
+
+export interface NicheCategory {
+  id: string;
+  label: string;
+  /// Pai dentro desta mesma lista. null = aparece na raiz da tela.
+  parentId: string | null;
+  depth: number;
+}
+
+/// Conjunto enxuto de categorias de cuidado pessoal masculino.
+///
+/// TODOS os ids foram conferidos um a um contra GET /categories/{id} na API
+/// real do Mercado Livre, com as credenciais do projeto — nada aqui foi
+/// deduzido nem inventado. Já erramos isso antes (MLB1276 é Esportes e
+/// Fitness, MLB263532 é Ferramentas), então: id novo só entra depois de bater
+/// na API e conferir o nome.
+///
+/// Esta mesma lista é a base do `prisma/seed.ts`. Se mexer aqui, mexa lá.
+export const MALE_CARE_CATEGORIES: readonly NicheCategory[] = [
+  // Barbearia e o que cresce dela — o coração do nicho.
+  { id: "MLB264787", label: "Barbearia", parentId: null, depth: 0 },
+  { id: "MLB277980", label: "Barbeadores", parentId: "MLB264787", depth: 1 },
+  { id: "MLB264805", label: "Lâminas de barbear", parentId: "MLB264787", depth: 1 },
+  { id: "MLB264791", label: "Espumas de barbear", parentId: "MLB264787", depth: 1 },
+  { id: "MLB264789", label: "Produtos pós barba", parentId: "MLB264787", depth: 1 },
+  { id: "MLB264790", label: "Bálsamos, óleos e tônicos para barba", parentId: "MLB264787", depth: 1 },
+  { id: "MLB278197", label: "Kits para barba", parentId: "MLB264787", depth: 1 },
+
+  // Máquinas e aparadores. O pai real no ML é "Artefatos para Cabelo"
+  // (MLB455174), que também guarda prancha e modelador de cachos — por isso
+  // entram as filhas certeiras, não o ramo inteiro.
+  { id: "MLB5411", label: "Máquinas de cortar cabelo", parentId: null, depth: 0 },
+  { id: "MLB446228", label: "Aparadores de pelo", parentId: null, depth: 0 },
+  { id: "MLB456356", label: "Peças de barbeador elétrico", parentId: null, depth: 0 },
+
+  // Cabelo.
+  { id: "MLB1263", label: "Cuidados com o cabelo", parentId: null, depth: 0 },
+  { id: "MLB1265", label: "Shampoos e condicionadores", parentId: "MLB1263", depth: 1 },
+  { id: "MLB32130", label: "Tratamentos para o cabelo", parentId: "MLB1263", depth: 1 },
+  { id: "MLB263523", label: "Pomadas, ceras e gel para o cabelo", parentId: "MLB1263", depth: 1 },
+  { id: "MLB388017", label: "Cremes de pentear", parentId: "MLB1263", depth: 1 },
+
+  // Pele.
+  { id: "MLB199407", label: "Cuidados com a pele", parentId: null, depth: 0 },
+  { id: "MLB264874", label: "Cuidado facial", parentId: "MLB199407", depth: 1 },
+  { id: "MLB1257", label: "Limpeza facial", parentId: "MLB199407", depth: 1 },
+  { id: "MLB1262", label: "Cuidado do corpo", parentId: "MLB199407", depth: 1 },
+  { id: "MLB8133", label: "Proteção solar", parentId: "MLB199407", depth: 1 },
+
+  // Perfume.
+  { id: "MLB6284", label: "Perfumes", parentId: null, depth: 0 },
+
+  // Higiene do dia a dia.
+  { id: "MLB44379", label: "Desodorantes", parentId: null, depth: 0 },
+  { id: "MLB5382", label: "Sabonetes", parentId: null, depth: 0 },
+  { id: "MLB264756", label: "Higiene bucal", parentId: null, depth: 0 },
+  { id: "MLB264765", label: "Barbeadores descartáveis", parentId: null, depth: 0 },
+  { id: "MLB416700", label: "Cartuchos para barbeadores", parentId: null, depth: 0 },
+] as const;
+
+/// Só os ids, para o filtro de nicho consultar em O(1).
+export const MALE_CARE_CATEGORY_IDS: ReadonlySet<string> = new Set(
+  MALE_CARE_CATEGORIES.map((c) => c.id),
+);
+
+/// Ramos de Beleza e Cuidado Pessoal que claramente NÃO são cuidado masculino.
+/// Ids conferidos contra GET /categories/{id}. Bloquear o ramo derruba junto
+/// todas as filhas dele — é por aqui que maquiagem, manicure, depilação e
+/// farmácia (onde mora "Cuidado Sexual", o tal do gel lubrificante) somem.
+export const OFF_NICHE_CATEGORIES: readonly { id: string; label: string }[] = [
+  { id: "MLB1248", label: "Maquiagem" },
+  { id: "MLB29884", label: "Manicure e pedicure" },
+  { id: "MLB5383", label: "Depilação" },
+  { id: "MLB431646", label: "Farmácia" },
+  { id: "MLB431650", label: "Cuidado sexual" },
+  { id: "MLB278194", label: "Tratamentos de beleza" },
+  { id: "MLB264751", label: "Artigos para cabeleireiros" },
+  { id: "MLB5398", label: "Perucas e apliques" },
+  { id: "MLB264755", label: "Higiene feminina" },
+  { id: "MLB455041", label: "Proteção para incontinência" },
+  { id: "MLB264761", label: "Absorventes para axilas" },
+  { id: "MLB199649", label: "Autobronzeador" },
+] as const;
+
+export const OFF_NICHE_CATEGORY_IDS: ReadonlySet<string> = new Set(
+  OFF_NICHE_CATEGORIES.map((c) => c.id),
+);
+
+/// Como uma categoria se posiciona no nicho de cuidado pessoal masculino.
+///   "masculino" — está na lista de permitidas (ela mesma ou uma ancestral)
+///   "fora"      — está num ramo bloqueado
+///   "neutro"    — nem uma coisa nem outra (ex.: "Coloração", "Repelentes")
+export type NicheStanding = "masculino" | "fora" | "neutro";
+
+/// Classifica a partir de um caminho de ancestrais já conhecido (a própria
+/// categoria primeiro ou por último, tanto faz). Bloqueio vence permissão:
+/// uma filha de Maquiagem nunca é cuidado masculino.
+export function classifyPath(path: readonly string[]): NicheStanding {
+  for (const id of path) if (OFF_NICHE_CATEGORY_IDS.has(id)) return "fora";
+  for (const id of path) if (MALE_CARE_CATEGORY_IDS.has(id)) return "masculino";
+  return "neutro";
+}
+
+// ----------------------------------------------------- filtro por título
+
+function foldAccents(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
+/// Palavras que, sozinhas, já denunciam produto feminino ou íntimo. Lista
+/// curta de propósito: é a última camada e só entra o que não tem leitura
+/// masculina possível.
+const TITULO_FORA_NICHO =
+  /\b(absorvente|absorventes|coletor menstrual|menstrual|tampao|calcinha|calcinhas|sutia|sutias|batom|batons|esmalte|esmaltes|maquiagem|delineador|rimel|mascara de cilios|cilios|unhas? postica|unhas? de gel|alongamento de unhas?|peruca|perucas|aplique de cabelo|megahair|mega hair|lubrificante intimo|gel lubrificante|preservativo|preservativos|camisinha|camisinhas|vibrador|plug anal|sex ?shop|masturbador|ducha higienica|epilador|depilador feminino|cera depilatoria|teste de gravidez|absorvente interno)\b/;
+
+/// Salvo-conduto: título que se declara masculino (ou é claramente de barba)
+/// nunca é barrado pela camada de palavra. Produto unissex de cabelo e pele é
+/// legítimo no nicho, então na dúvida o item passa e o motivo vai para o log.
+const TITULO_MASCULINO =
+  /\b(barba|barbas|barbear|barbeador|barbeadores|masculin[oa]s?|men'?s|for men|homem|homens|aparador de pelos?|maquina de cortar|pos[- ]barba|after ?shave|minoxidil|pomada modeladora)\b/;
+
+/// O título denuncia produto fora do nicho masculino?
+export function tituloForaDoNicho(title: string): boolean {
+  const t = foldAccents(title);
+  if (TITULO_MASCULINO.test(t)) return false;
+  return TITULO_FORA_NICHO.test(t);
+}
+
+// ------------------------------------------- filtro por tipo de produto
+
+/// Tipos de produto (domain_id) que nunca são cuidado masculino. Casamos por
+/// palavra dentro do id em vez de manter uma lista fechada de ids exatos:
+/// o ML cria domínio novo o tempo todo e id inventado já nos custou caro.
+const DOMINIO_FORA_NICHO =
+  /(MAKEUP|LIPSTICK|LIP_GLOSS|NAIL|MANICURE|PEDICURE|EYELASH|EYEBROW|MASCARA|WIG|HAIR_EXTENSION|LUBRICANT|CONDOM|SEX_|INTIMATE|MENSTRUAL|SANITARY|TAMPON|PANTY|BRA_|DEPILAT|EPILAT|WAXING|PREGNANCY_TEST|MEDICINE|DRUG)/;
+
+/// O tipo de produto denuncia algo fora do nicho masculino?
+export function tipoDeProdutoForaDoNicho(domainId: string | null | undefined): boolean {
+  if (!domainId) return false;
+  return DOMINIO_FORA_NICHO.test(domainId.toUpperCase());
+}
 
 /// 6h: tempo de sobra para uma varredura inteira reaproveitar o mesmo nó.
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -209,4 +361,30 @@ export async function isUnderCategory(
   }
   if (node.pathFromRoot.length === 0) return null;
   return node.pathFromRoot.some((step) => step.id === rootId);
+}
+
+/// Onde a categoria de um anúncio cai no nicho de cuidado masculino.
+/// `null` = não deu para resolver (rede, 404). Quem chama trata a dúvida —
+/// a regra do projeto é deixar passar e registrar, nunca descartar calado.
+export async function classifyCategory(
+  categoryId: string,
+  options: CategoryOptions = {},
+): Promise<NicheStanding | null> {
+  if (!categoryId) return null;
+  // Atalhos sem chamada: a própria categoria já está numa das listas.
+  if (OFF_NICHE_CATEGORY_IDS.has(categoryId)) return "fora";
+
+  let node: CategoryNode;
+  try {
+    node = await fetchCategory(categoryId, options);
+  } catch (err) {
+    if (isMLApiError(err) && err.code === "ABORTED") throw err;
+    return null;
+  }
+  if (node.pathFromRoot.length === 0) return null;
+
+  const path = node.pathFromRoot.map((step) => step.id);
+  // Fora de Beleza e Cuidado Pessoal por completo (ex.: shampoo automotivo).
+  if (!path.includes(BEAUTY_ROOT)) return "fora";
+  return classifyPath([categoryId, ...path]);
 }

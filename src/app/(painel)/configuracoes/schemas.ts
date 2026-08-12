@@ -50,40 +50,8 @@ export const mlSchema = z.object({
   mlSiteId: z.string().trim().min(2).max(10),
 });
 
-/// A redirect URI precisa ser idêntica à cadastrada na aplicação do Mercado
-/// Livre, inclusive na barra final. Por isso nada de normalizar aqui além do trim.
-const redirectUriField = z
-  .string()
-  .trim()
-  .min(1, "Informe a URL de redirecionamento cadastrada no Mercado Livre.")
-  .max(500)
-  .refine((v) => /^https?:\/\/.+/i.test(v), {
-    message: "Informe uma URL completa, começando com https://",
-  });
-
-export const mlRedirectUriSchema = z.object({
-  mlRedirectUri: redirectUriField,
-});
-
-/// Conexão manual: o usuário cola o code que apareceu na barra de endereço.
-export const mlManualCodeSchema = z.object({
-  mlRedirectUri: redirectUriField,
-  mlCode: z
-    .string()
-    .trim()
-    .min(1, "Cole o código que apareceu na barra de endereço.")
-    .max(300)
-    /// Se colarem a URL inteira, aproveitamos só o parâmetro code.
-    .transform((v) => {
-      const match = /[?&]code=([^&#\s]+)/.exec(v);
-      return match ? decodeURIComponent(match[1]) : v;
-    }),
-});
-
-// -------------------------------------------------------- categoria monitorada
-
-/// MLB- seguido de letras, números e sublinhado (ex.: MLB-RAZOR_BLADES).
-/// Vazio é legítimo: significa busca sem filtro de domínio.
+/// Tipo de produto do Mercado Livre: MLB- seguido de letras, números e
+/// sublinhado, por exemplo MLB-RAZOR_BLADES.
 const DOMAIN_ID_RE = /^MLB-[A-Z0-9_]+$/;
 
 export const watchSchema = z
@@ -116,6 +84,6 @@ export const watchSchema = z
     enabled: zBoolFromString,
   })
   .refine((v) => Boolean(v.categoryId) || Boolean(v.query), {
-    message: "Preencha o ID de categoria ou o termo de busca (pelo menos um).",
+    message: "Preencha o código da categoria ou o termo de busca (pelo menos um).",
     path: ["query"],
   });

@@ -26,15 +26,21 @@ async function main() {
   console.log("Iniciando seed...");
 
   // ============================================================================
-  // Watches — categorias monitoradas (nicho: Beleza e Cuidado Pessoal)
+  // Categorias monitoradas — nicho: CUIDADO PESSOAL MASCULINO
   //
-  // IDs confirmados um a um contra a API real do ML (os antigos eram
-  // inventados — MLB1276 é "Esportes e Fitness", MLB263532 é "Ferramentas",
-  // MLB264724 nem existe). A API de busca está bloqueada (403) para esta
-  // aplicação, então nenhuma watch usa `query` — só coleta por categoria.
+  // Antes semeávamos a raiz inteira "Beleza e Cuidado Pessoal" (MLB1246), que
+  // carrega junto Maquiagem, Manicure e Pedicure, Depilação e Farmácia. Era
+  // isso que enchia o painel de produto feminino e até de gel lubrificante.
+  // Agora o seed traz só um conjunto enxuto e certeiro.
+  //
+  // TODOS os ids abaixo foram conferidos um a um contra GET /categories/{id}
+  // na API real do Mercado Livre. Não invente id: já erramos assim antes
+  // (MLB1276 é "Esportes e Fitness", MLB263532 é "Ferramentas").
+  //
+  // Esta lista é a mesma de MALE_CARE_CATEGORIES em src/lib/ml/categories.ts,
+  // que é quem o filtro de nicho da coleta consulta. Não dá para importar de
+  // lá (aquele módulo é de servidor), então mexeu aqui, mexa lá também.
   // ============================================================================
-
-  const BEAUTY_ROOT = "MLB1246";
 
   const watches: Array<{
     label: string;
@@ -42,28 +48,51 @@ async function main() {
     parentCategoryId: string | null;
     depth: number;
   }> = [
-    { label: "Beleza e Cuidado Pessoal", categoryId: BEAUTY_ROOT, parentCategoryId: null, depth: 0 },
-    { label: "Artefatos para Cabelo", categoryId: "MLB455174", parentCategoryId: BEAUTY_ROOT, depth: 1 },
-    { label: "Artigos para Cabeleireiros", categoryId: "MLB264751", parentCategoryId: BEAUTY_ROOT, depth: 1 },
-    { label: "Barbearia", categoryId: "MLB264787", parentCategoryId: BEAUTY_ROOT, depth: 1 },
-    { label: "Cuidados com a Pele", categoryId: "MLB199407", parentCategoryId: BEAUTY_ROOT, depth: 1 },
-    { label: "Cuidados com o Cabelo", categoryId: "MLB1263", parentCategoryId: BEAUTY_ROOT, depth: 1 },
-    { label: "Depilação", categoryId: "MLB5383", parentCategoryId: BEAUTY_ROOT, depth: 1 },
-    { label: "Farmácia", categoryId: "MLB431646", parentCategoryId: BEAUTY_ROOT, depth: 1 },
-    { label: "Higiene Pessoal", categoryId: "MLB198312", parentCategoryId: BEAUTY_ROOT, depth: 1 },
-    { label: "Manicure e Pedicure", categoryId: "MLB29884", parentCategoryId: BEAUTY_ROOT, depth: 1 },
-    { label: "Maquiagem", categoryId: "MLB1248", parentCategoryId: BEAUTY_ROOT, depth: 1 },
-    { label: "Outros", categoryId: "MLB1275", parentCategoryId: BEAUTY_ROOT, depth: 1 },
-    { label: "Perfumes", categoryId: "MLB6284", parentCategoryId: BEAUTY_ROOT, depth: 1 },
-    { label: "Tratamentos de Beleza", categoryId: "MLB278194", parentCategoryId: BEAUTY_ROOT, depth: 1 },
+    // Barbearia e o que cresce dela.
+    { label: "Barbearia", categoryId: "MLB264787", parentCategoryId: null, depth: 0 },
+    { label: "Barbeadores", categoryId: "MLB277980", parentCategoryId: "MLB264787", depth: 1 },
+    { label: "Lâminas de barbear", categoryId: "MLB264805", parentCategoryId: "MLB264787", depth: 1 },
+    { label: "Espumas de barbear", categoryId: "MLB264791", parentCategoryId: "MLB264787", depth: 1 },
+    { label: "Produtos pós barba", categoryId: "MLB264789", parentCategoryId: "MLB264787", depth: 1 },
+    { label: "Bálsamos, óleos e tônicos para barba", categoryId: "MLB264790", parentCategoryId: "MLB264787", depth: 1 },
+    { label: "Kits para barba", categoryId: "MLB278197", parentCategoryId: "MLB264787", depth: 1 },
+
+    // Máquinas e aparadores. O pai no ML é "Artefatos para Cabelo" (MLB455174),
+    // que também guarda prancha e modelador de cachos — por isso entram só as
+    // filhas certeiras, e não o ramo inteiro.
+    { label: "Máquinas de cortar cabelo", categoryId: "MLB5411", parentCategoryId: null, depth: 0 },
+    { label: "Aparadores de pelo", categoryId: "MLB446228", parentCategoryId: null, depth: 0 },
+    { label: "Peças de barbeador elétrico", categoryId: "MLB456356", parentCategoryId: null, depth: 0 },
+
+    // Cabelo.
+    { label: "Cuidados com o cabelo", categoryId: "MLB1263", parentCategoryId: null, depth: 0 },
+    { label: "Shampoos e condicionadores", categoryId: "MLB1265", parentCategoryId: "MLB1263", depth: 1 },
+    { label: "Tratamentos para o cabelo", categoryId: "MLB32130", parentCategoryId: "MLB1263", depth: 1 },
+    { label: "Pomadas, ceras e gel para o cabelo", categoryId: "MLB263523", parentCategoryId: "MLB1263", depth: 1 },
+    { label: "Cremes de pentear", categoryId: "MLB388017", parentCategoryId: "MLB1263", depth: 1 },
+
+    // Pele.
+    { label: "Cuidados com a pele", categoryId: "MLB199407", parentCategoryId: null, depth: 0 },
+    { label: "Cuidado facial", categoryId: "MLB264874", parentCategoryId: "MLB199407", depth: 1 },
+    { label: "Limpeza facial", categoryId: "MLB1257", parentCategoryId: "MLB199407", depth: 1 },
+    { label: "Cuidado do corpo", categoryId: "MLB1262", parentCategoryId: "MLB199407", depth: 1 },
+    { label: "Proteção solar", categoryId: "MLB8133", parentCategoryId: "MLB199407", depth: 1 },
+
+    // Perfume.
+    { label: "Perfumes", categoryId: "MLB6284", parentCategoryId: null, depth: 0 },
+
+    // Higiene do dia a dia.
+    { label: "Desodorantes", categoryId: "MLB44379", parentCategoryId: null, depth: 0 },
+    { label: "Sabonetes", categoryId: "MLB5382", parentCategoryId: null, depth: 0 },
+    { label: "Higiene bucal", categoryId: "MLB264756", parentCategoryId: null, depth: 0 },
+    { label: "Barbeadores descartáveis", categoryId: "MLB264765", parentCategoryId: null, depth: 0 },
+    { label: "Cartuchos para barbeadores", categoryId: "MLB416700", parentCategoryId: null, depth: 0 },
   ];
 
-  // Upsert por categoryId (agora @unique) em vez de id sintético — é mais
-  // correto e evita duplicata se a sincronização automática da árvore
-  // (syncCategoryTree) já tiver rodado antes deste seed. Como essas watches
-  // são idênticas às que a sincronização geraria (auto: true), a atualização
-  // só toca label/parentCategoryId/depth — nunca enabled/limit/minDiscount,
-  // que o usuário pode já ter ajustado no painel.
+  // Upsert por categoryId (@unique) em vez de id sintético — evita duplicata
+  // se a busca automática de categorias já tiver rodado antes deste seed. A
+  // atualização só toca label/parentCategoryId/depth: nunca enabled, limit ou
+  // minDiscount, que o usuário pode já ter ajustado no painel.
   for (const watch of watches) {
     await prisma.watch.upsert({
       where: { categoryId: watch.categoryId },
@@ -87,7 +116,9 @@ async function main() {
     });
   }
 
-  console.log("✓ Watches criadas/atualizadas");
+  // O seed NÃO apaga nada: quem decide o que sai da lista é o usuário, pelo
+  // painel. Ele semeia o conjunto certo e deixa o resto como está.
+  console.log(`✓ ${watches.length} categorias de cuidado pessoal masculino criadas/atualizadas`);
 
   // ============================================================================
   // Phrases — ~25 frases curtas para grupo de WhatsApp de ofertas
