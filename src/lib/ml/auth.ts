@@ -262,6 +262,10 @@ export async function getAuthorizeUrl(redirectUri: string, state: string): Promi
   url.searchParams.set("response_type", "code");
   url.searchParams.set("client_id", creds.clientId);
   url.searchParams.set("redirect_uri", redirectUri);
+  // Sem offline_access o Mercado Livre devolve só o access token, que dura
+  // poucas horas, e nenhum refresh token. A conexão morreria sozinha no
+  // mesmo dia e exigiria autorizar de novo toda vez.
+  url.searchParams.set("scope", "offline_access read");
   if (state) url.searchParams.set("state", state);
   return url.toString();
 }
