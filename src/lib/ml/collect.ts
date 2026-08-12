@@ -26,6 +26,15 @@ export type CollectionSource = "fixtures" | "search" | "highlights";
 /// incompleta que o painel precisa mostrar.
 export type CollectSkipReason = "NO_QUERY_NO_CATEGORY";
 
+/// WatchQuery de search.ts ainda não conhece domainId. Estende aqui em vez de
+/// alterar aquele módulo: qualquer Watch do Prisma (que já tem a coluna)
+/// continua batendo estruturalmente com este tipo.
+export interface CollectWatchQuery extends WatchQuery {
+  /// Domínio de catálogo do ML (ex. MLB-RAZOR_BLADES). Quando preenchido,
+  /// restringe a busca por termo na própria API do Mercado Livre.
+  domainId?: string | null;
+}
+
 export interface CollectOptions {
   signal?: AbortSignal;
   siteId?: string;
@@ -70,12 +79,13 @@ const BASE: Omit<CollectResult, "products" | "source" | "note"> = {
 };
 
 export async function collectForWatch(
-  watch: WatchQuery,
+  watch: CollectWatchQuery,
   options: CollectOptions = {},
 ): Promise<CollectResult> {
   const limit = watch.limit && watch.limit > 0 ? Math.floor(watch.limit) : 100;
   const query = watch.query?.trim() || null;
   const categoryId = watch.categoryId?.trim() || null;
+  const domainId = watch.domainId?.trim() || null;
 
   // 1. fixtures
   if (await isFixtureMode()) {
@@ -94,16 +104,22 @@ export async function collectForWatch(
   if (query) {
     const found = await searchProducts({
       q: query,
+      domainId,
       limit,
       signal: options.signal,
       siteId: options.siteId,
     });
 
     const parts = [
-      `fonte=busca por termo "${query}"`,
+      domainId
+        ? `fonte=busca por termo "${query}" restrita ao domínio ${domainId}`
+        : `fonte=busca por termo "${query}"`,
       `${found.catalogSeen} produto(s) de catálogo de ${found.total} resultado(s)`,
       `${found.listingsSeen} anúncio(s) avaliado(s)`,
     ];
+    // O domínio filtra na origem, mas o filtro de nicho por categoria segue
+    // valendo por cima: cinto e suspensório, um domínio errado não passa.
+    if (domainId) parts.push("filtro de nicho por categoria mantido como segunda camada");
     if (found.withoutListings > 0) parts.push(`${found.withoutListings} sem anúncio vencedor`);
     if (found.offNiche > 0) parts.push(`${found.offNiche} fora do nicho descartado(s)`);
     if (found.failed > 0) parts.push(`${found.failed} inacessível(is)`);

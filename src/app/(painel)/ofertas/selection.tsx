@@ -6,7 +6,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { TickDouble02Icon, Loading03Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { OfferStatus } from "@/generated/prisma";
+import { OfferStatus } from "@/lib/enums";
 import { setOffersStatusBulk } from "@/app/(painel)/ofertas/actions";
 
 interface SelectionContextValue {

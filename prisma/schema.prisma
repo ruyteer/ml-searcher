@@ -20,8 +20,12 @@ model Watch {
   label      String
   /// ID de categoria do ML (ex. MLB264787). Nulo quando a busca é só por termo.
   categoryId String?   @unique
-  /// Termo de busca livre. Só usado quando a API de busca estiver liberada.
+  /// Termo de busca livre, usado em /products/search.
   query      String?
+  /// Domínio de produto do ML (ex. MLB-RAZOR_BLADES). Quando preenchido,
+  /// restringe a busca por termo ao domínio, o que derruba drasticamente o
+  /// número de candidatos fora do nicho.
+  domainId   String?
   enabled    Boolean   @default(true)
   /// Sobrescreve o desconto mínimo global só para esta watch.
   minDiscount Int?
@@ -354,4 +358,26 @@ model Setting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+/// Token de usuário do Mercado Livre, obtido pelo fluxo authorization_code.
+/// A documentação oficial só reconhece authorization_code e refresh_token
+/// como grant types; client_credentials funciona por tolerância e pode ser
+/// cortado sem aviso, como aconteceu com a API de busca.
+///
+/// Linha única: o id fixo "default" impede duplicata.
+model MLAuth {
+  id           String   @id @default("default")
+  /// Id e apelido da conta do Mercado Livre que autorizou.
+  mlUserId     String?
+  nickname     String?
+
+  accessToken  String
+  /// O ML rotaciona o refresh token a cada uso: o antigo morre na hora.
+  refreshToken String
+  expiresAt    DateTime
+  scope        String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

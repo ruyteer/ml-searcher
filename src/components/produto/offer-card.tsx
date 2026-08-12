@@ -15,7 +15,7 @@ import { CopyButton } from "./copy-button";
 import { OfferDetailsPopover } from "./offer-details-popover";
 import { OfferActionsMenu } from "./offer-actions-menu";
 import type { PresellOption } from "./generate-link-menu";
-import { OfferStatus, LinkKind } from "@/generated/prisma";
+import { OfferStatus, LinkKind } from "@/lib/enums";
 import type { OfferListItem } from "@/lib/data/offers";
 import { setOfferStatus, blockProductFromOffer, generateLink } from "@/app/(painel)/ofertas/actions";
 import { cn } from "@/lib/utils";
@@ -29,9 +29,9 @@ export interface OfferCardProps {
   className?: string;
 }
 
-/// Card de oferta usado em /ofertas. A imagem domina o card (proporção 4:3,
-/// largura total); só o essencial fica visível de cara (imagem, badge de
-/// desconto, título, preço). Score, tipo de referência, vendedor, frete
+/// Card de oferta usado em /ofertas. Card compacto: a imagem ocupa a largura
+/// toda em proporção 16:10, e só o essencial fica visível de cara (imagem,
+/// badge de desconto, título, preço). Score, tipo de referência, vendedor, frete
 /// grátis e histórico ficam no popover de detalhes (ícone "i"). As demais
 /// ações (gerar link, publicar, ignorar, bloquear) ficam no menu kebab; só
 /// "Copiar link" fica visível como botão principal. Status é atualizado de
@@ -80,10 +80,16 @@ export function OfferCard({ offer, hotDiscount, presells = [], selected, onToggl
     <Card
       className={cn("group relative flex flex-col gap-0 overflow-hidden p-0", isDecided && "opacity-70", className)}
     >
-      {/* Imagem: área principal do card, largura total do card */}
-      <div className="relative aspect-[4/3] w-full shrink-0 bg-neutral-100">
+      {/* Imagem: 16:10 em vez de 4:3, pra caber mais card por linha sem que a
+          foto deixe de ser reconhecível. */}
+      <div className="relative aspect-[16/10] w-full shrink-0 bg-neutral-100">
         <Link href={offer.product.permalink} target="_blank" rel="noreferrer" className="absolute inset-0">
-          <ProductThumb src={offer.product.thumbnail} alt={offer.product.title} imageClassName="p-4" />
+          <ProductThumb
+            src={offer.product.thumbnail}
+            alt={offer.product.title}
+            sizes="(min-width: 1536px) 20vw, (min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+            imageClassName="p-2.5"
+          />
         </Link>
 
         {onToggleSelect && (
@@ -102,23 +108,26 @@ export function OfferCard({ offer, hotDiscount, presells = [], selected, onToggl
           </div>
         )}
 
-        <div className="absolute top-2 right-2 z-10 flex flex-col items-end gap-1">
+        <div className="absolute top-1.5 right-1.5 z-10 flex flex-col items-end gap-1">
           {offer.discountPct > 0 && (
-            <Badge variant={isHot ? "destructive" : "secondary"} className={cn("shadow-sm", isHot && "font-semibold")}>
+            <Badge
+              variant={isHot ? "destructive" : "secondary"}
+              className={cn("px-1.5 py-0 text-xs tabular-nums shadow-sm", isHot && "font-semibold")}
+            >
               -{offer.discountPct}%
             </Badge>
           )}
           {isDecided && (
             <span
               className={cn(
-                "flex size-6 items-center justify-center rounded-full bg-background/95 shadow-sm ring-1 ring-border",
+                "flex size-5 items-center justify-center rounded-full bg-background/95 shadow-sm ring-1 ring-border",
                 status === OfferStatus.PUBLISHED ? "text-success" : "text-muted-foreground",
               )}
               title={status === OfferStatus.PUBLISHED ? "Publicada" : "Ignorada"}
             >
               <HugeiconsIcon
                 icon={status === OfferStatus.PUBLISHED ? CheckmarkCircle02Icon : Cancel01Icon}
-                size={14}
+                size={12}
                 strokeWidth={1.5}
               />
             </span>
@@ -127,23 +136,23 @@ export function OfferCard({ offer, hotDiscount, presells = [], selected, onToggl
       </div>
 
       {/* Conteúdo: só o essencial fica visível de cara */}
-      <div className="flex flex-1 flex-col gap-2 p-3">
+      <div className="flex flex-1 flex-col gap-1.5 p-2.5">
         <Link
           href={offer.product.permalink}
           target="_blank"
           rel="noreferrer"
-          className="line-clamp-2 text-sm font-medium text-foreground hover:underline"
+          className="line-clamp-2 text-[13px] leading-snug font-medium text-foreground hover:underline"
           title={offer.product.title}
         >
           {offer.product.title}
         </Link>
 
-        <div className="flex items-start justify-between gap-2">
-          <PriceTag price={offer.price} referencePrice={offer.referencePrice} />
+        <div className="mt-auto flex items-start justify-between gap-1">
+          <PriceTag price={offer.price} referencePrice={offer.referencePrice} size="md" />
           <OfferDetailsPopover offer={offer} />
         </div>
 
-        <div className="mt-1 flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <CopyButton
             variant="default"
             size="sm"

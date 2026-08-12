@@ -2,7 +2,7 @@
 // (createSearchParamsCache) e os hooks do cliente (useQueryStates) — a
 // mesma definição garante que os dois lados nunca saiam de sincronia.
 import { parseAsString, parseAsStringEnum, createSearchParamsCache } from "nuqs/server";
-import { LinkKind } from "@/generated/prisma";
+import { LinkKind } from "@/lib/enums";
 import { LINK_PERIOD_OPTIONS, LINK_SORT_OPTIONS } from "@/lib/link-filters";
 
 export const LINK_KIND_FILTER_OPTIONS = ["all", ...Object.values(LinkKind)] as const;

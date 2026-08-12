@@ -35,7 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { LinkKind, OfferStatus } from "@/generated/prisma";
+import { LinkKind, OfferStatus } from "@/lib/enums";
 import { generateLink } from "@/app/(painel)/ofertas/actions";
 import type { PresellOption } from "./generate-link-menu";
 

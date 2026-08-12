@@ -26,7 +26,9 @@ export async function OffersGrid({ filters }: { filters: OfferFilters }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {/* Densidade: a coluna fica em torno de 230px em todo breakpoint acima
+          do celular, largura em que título e preço ainda são legíveis. */}
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         {result.items.map((offer) => (
           <SelectableOfferCard key={offer.id} offer={offer} hotDiscount={settings.hotDiscount} presells={presells} />
         ))}

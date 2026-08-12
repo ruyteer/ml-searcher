@@ -43,3 +43,9 @@ next-env.d.ts
 
 # Prisma client gerado (recriado pelo postinstall)
 /src/generated
+
+# Lockfiles de outros gerenciadores: o projeto usa npm.
+pnpm-lock.yaml
+pnpm-workspace.yaml
+yarn.lock
+bun.lockb

@@ -1,8 +1,16 @@
 /// Cliente HTTP da API do Mercado Livre.
-/// Responsabilidades: OAuth (client_credentials) com cache de token,
-/// timeout, retry com backoff, rate limiting e erros tipados.
+/// Responsabilidades: resolver o token, timeout, retry com backoff,
+/// rate limiting e erros tipados.
+///
+/// Ordem de escolha do token:
+///   1. token de usuário (authorization_code), quando há conta conectada;
+///   2. client_credentials, como fallback LEGADO (ver getAppAccessToken).
+///
+/// O import de ./auth é circular de propósito e seguro: os dois módulos só se
+/// referenciam dentro de funções, nunca no topo.
 
 import { getSettings } from "../settings";
+import { clearUserTokenCache, getUserToken, hasUserConnection } from "./auth";
 import type { MLErrorBody } from "./types";
 
 export const ML_API_BASE = "https://api.mercadolibre.com";
@@ -213,7 +221,12 @@ async function requestToken(creds: MLCredentials): Promise<string> {
   return payload.access_token;
 }
 
-export async function getAccessToken(): Promise<string> {
+/// CAMINHO LEGADO. `client_credentials` não consta na documentação oficial de
+/// autenticação do Mercado Livre (que só reconhece `authorization_code` e
+/// `refresh_token`) e responde `unsupported_grant_type` a qualquer momento que
+/// o ML decidir cortar a tolerância. Só é usado enquanto não houver conta
+/// conectada pelo fluxo de usuário.
+export async function getAppAccessToken(): Promise<string> {
   const creds = await requireCredentials();
   const key = credsKeyOf(creds);
 
@@ -230,9 +243,35 @@ export async function getAccessToken(): Promise<string> {
   return promise;
 }
 
+/// De onde vem o token usado nas chamadas.
+export type MLTokenSource = "usuario" | "aplicacao" | "nenhum";
+
+export interface ResolvedToken {
+  token: string;
+  source: Exclude<MLTokenSource, "nenhum">;
+}
+
+/// Token válido mais o rótulo da origem, para o painel poder mostrar.
+export async function resolveAccessToken(): Promise<ResolvedToken> {
+  const userToken = await getUserToken();
+  if (userToken) return { token: userToken, source: "usuario" };
+  return { token: await getAppAccessToken(), source: "aplicacao" };
+}
+
+export async function getAccessToken(): Promise<string> {
+  return (await resolveAccessToken()).token;
+}
+
+/// O que a próxima chamada usaria, sem disparar nenhuma autenticação.
+export async function getTokenSource(): Promise<MLTokenSource> {
+  if (await hasUserConnection()) return "usuario";
+  return (await getCredentials()) ? "aplicacao" : "nenhum";
+}
+
 export function clearTokenCache(): void {
   cachedToken = null;
   pendingToken = null;
+  clearUserTokenCache();
 }
 
 // ------------------------------------------------------------------- fetch

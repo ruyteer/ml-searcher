@@ -2,12 +2,28 @@
 
 import { setSettings } from "@/lib/settings";
 import { TAGS, bust } from "@/lib/cache";
-import { getAccessToken, clearTokenCache, isMLApiError } from "@/lib/ml";
+import {
+  clearTokenCache,
+  disconnect as disconnectMl,
+  exchangeCode,
+  isMLApiError,
+  resolveAccessToken,
+  setMlRedirectUri,
+} from "@/lib/ml";
 import { toCents } from "@/lib/format";
 import { createWatch, updateWatch, deleteWatch, setWatchEnabled, syncCategoryTree } from "@/lib/data/watches";
 import { BEAUTY_ROOT } from "@/lib/ml/categories";
-import { detectionSchema, domainSchema, affiliateSchema, mlSchema, watchSchema } from "./schemas";
-import { type ActionState, ok, fail, zodErrors } from "./action-state";
+import { discoverDomains, isBeautyDomain } from "@/lib/ml/domains";
+import {
+  detectionSchema,
+  domainSchema,
+  affiliateSchema,
+  mlSchema,
+  mlManualCodeSchema,
+  mlRedirectUriSchema,
+  watchSchema,
+} from "./schemas";
+import { type ActionState, type DomainDiscoveryResult, ok, fail, zodErrors } from "./action-state";
 
 // ------------------------------------------------------- detecção de ofertas
 
@@ -80,8 +96,13 @@ export async function testMlConnectionAction(
 ): Promise<ActionState> {
   clearTokenCache(); // força uma autenticação nova em vez de reaproveitar cache
   try {
-    await getAccessToken();
-    return ok("Conexão autenticada com sucesso. As próximas varreduras usam a API real.");
+    const { source } = await resolveAccessToken();
+    if (source === "usuario") {
+      return ok("Conectado com o token da conta autorizada. É o caminho oficial e recomendado.");
+    }
+    return ok(
+      "Conectado com o token da aplicação. Funciona, mas é um caminho legado: conecte uma conta para usar o fluxo oficial.",
+    );
   } catch (err) {
     if (isMLApiError(err)) {
       if (err.code === "NO_CREDENTIALS") {
@@ -91,6 +112,60 @@ export async function testMlConnectionAction(
     }
     return fail("Falha inesperada ao testar a conexão.");
   }
+}
+
+/// Guarda a URL de redirecionamento cadastrada na aplicação do Mercado Livre.
+/// Fica em `Setting` (modelo key/value livre) com a chave `mlRedirectUri`, e
+/// não no SETTINGS_SCHEMA: é dado do cadastro da aplicação, não um ajuste de
+/// comportamento, e precisa bater byte a byte com o que foi registrado lá.
+export async function updateMlRedirectUriAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = mlRedirectUriSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fail("Verifique os campos destacados.", zodErrors(parsed.error));
+
+  await setMlRedirectUri(parsed.data.mlRedirectUri);
+  return ok("URL de redirecionamento salva.");
+}
+
+/// Conexão manual: o usuário cola o `code` que apareceu na barra de endereço
+/// depois de autorizar. Existe porque o Mercado Livre só aceita redirect URI
+/// em HTTPS, e o painel ainda roda em http://localhost. Sem isto não daria
+/// para conectar a conta hoje.
+export async function connectMlWithCodeAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = mlManualCodeSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fail("Verifique os campos destacados.", zodErrors(parsed.error));
+
+  const { mlRedirectUri, mlCode } = parsed.data;
+  // A troca só funciona com a MESMA redirect URI usada na autorização, então
+  // salvamos antes: o que está no campo é o que vale.
+  await setMlRedirectUri(mlRedirectUri);
+
+  try {
+    // Sem clearTokenCache aqui: exchangeCode já deixa o token novo em cache, e
+    // invalidá-lo forçaria uma renovação imediata, queimando o refresh token
+    // recém-emitido à toa (o ML rotaciona ele a cada uso).
+    const status = await exchangeCode(mlCode, mlRedirectUri);
+    const quem = status.nickname ?? status.mlUserId ?? "sua conta";
+    return ok(`Conta conectada: ${quem}. As próximas chamadas já usam o token de usuário.`);
+  } catch (err) {
+    if (isMLApiError(err)) return fail(err.message);
+    return fail("Falha inesperada ao concluir a conexão. Tente autorizar de novo.");
+  }
+}
+
+export async function disconnectMlAction(
+  _prev: ActionState,
+  _formData: FormData,
+): Promise<ActionState> {
+  await disconnectMl();
+  return ok(
+    "Conta desconectada. Para revogar o acesso de vez, remova a aplicação nas permissões da sua conta do Mercado Livre.",
+  );
 }
 
 // -------------------------------------------------------- categoria monitorada
@@ -132,6 +207,26 @@ export async function deleteWatchAction(
   await deleteWatch(id);
   bust(TAGS.watches);
   return ok("Categoria excluída. Os produtos já coletados continuam no catálogo.");
+}
+
+/// Chamada direta (sem <form>) pelo botão "Descobrir domínio" do diálogo de
+/// categoria: usa o termo que a pessoa já digitou no campo de busca e devolve
+/// os domínios candidatos, marcando quais caem dentro de Beleza e Cuidado
+/// Pessoal. Termo vazio ou sem domínio conhecido não é erro, é lista vazia.
+export async function discoverDomainsAction(q: string): Promise<DomainDiscoveryResult> {
+  const term = q.trim();
+  if (!term) return { ok: true, message: "Digite um termo de busca antes de descobrir o domínio.", domains: [] };
+
+  try {
+    const found = await discoverDomains(term);
+    const domains = await Promise.all(
+      found.map(async (d) => ({ ...d, beauty: await isBeautyDomain(d.categoryId) })),
+    );
+    return { ok: true, message: "", domains };
+  } catch (err) {
+    if (isMLApiError(err)) return { ok: false, message: `Não foi possível descobrir o domínio: ${err.message}`, domains: [] };
+    return { ok: false, message: "Falha inesperada ao descobrir o domínio.", domains: [] };
+  }
 }
 
 /// Chamada direta (sem <form>) pelo Switch da tabela, com UI otimista no cliente.

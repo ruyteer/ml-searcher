@@ -13,6 +13,8 @@ export interface WatchInput {
   label: string;
   categoryId: string | null;
   query: string | null;
+  /// Domínio de catálogo do ML (ex. MLB-RAZOR_BLADES). null = sem filtro de domínio.
+  domainId: string | null;
   limit: number;
   /// null = herda o desconto mínimo global.
   minDiscount: number | null;
@@ -40,6 +42,7 @@ export async function createWatch(input: WatchInput): Promise<Watch> {
       label: input.label,
       categoryId: input.categoryId,
       query: input.query,
+      domainId: input.domainId,
       limit: input.limit,
       minDiscount: input.minDiscount,
       enabled: input.enabled,
@@ -54,6 +57,7 @@ export async function updateWatch(id: string, input: WatchInput): Promise<Watch>
       label: input.label,
       categoryId: input.categoryId,
       query: input.query,
+      domainId: input.domainId,
       limit: input.limit,
       minDiscount: input.minDiscount,
       enabled: input.enabled,
@@ -84,8 +88,10 @@ export interface SyncCategoryTreeResult {
 }
 
 /// Varre a árvore de categorias do ML a partir de `rootId` e faz upsert de
-/// uma Watch por categoria (auto: true). Preserva enabled/minDiscount/limit
-/// de watches já existentes — só atualiza label/parentCategoryId/depth.
+/// uma Watch por categoria (auto: true). Preserva enabled/minDiscount/limit/
+/// domainId de watches já existentes — só atualiza label/parentCategoryId/depth.
+/// domainId em especial é escolha do usuário via "Descobrir domínio" na UI,
+/// então a sincronização automática nunca grava nem apaga esse campo.
 /// Watches criadas na mão (auto: false) nunca são tocadas por aqui.
 export async function syncCategoryTree({
   rootId,

@@ -29,3 +29,24 @@ export function zodErrors(error: z.ZodError): Record<string, string[]> {
   }
   return out;
 }
+
+// -------------------------------------------------- descoberta de domínio
+
+/// Um domínio de catálogo sugerido pelo endpoint de descoberta do ML.
+export interface DiscoveredDomainOption {
+  domainId: string;
+  domainName: string;
+  categoryId: string | null;
+  categoryName: string | null;
+  /// A categoria do domínio cai dentro de Beleza e Cuidado Pessoal?
+  /// null quando não foi possível confirmar (falha ao resolver a categoria).
+  beauty: boolean | null;
+}
+
+/// Retorno de discoverDomainsAction — não usa useActionState (é chamada
+/// direta a partir do botão "Descobrir domínio"), por isso não tem `ts`.
+export interface DomainDiscoveryResult {
+  ok: boolean;
+  message: string;
+  domains: DiscoveredDomainOption[];
+}

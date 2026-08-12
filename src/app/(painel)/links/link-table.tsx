@@ -51,7 +51,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { EmptyState } from "@/components/shell/empty-state";
-import { LinkKind } from "@/generated/prisma";
+import { LinkKind } from "@/lib/enums";
 import { formatCompact, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { setLinkActiveAction, deleteLinkAction } from "./actions";
