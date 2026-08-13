@@ -14,33 +14,58 @@ export async function TopLinksSection({ period }: { period: Period }) {
       {links.length === 0 ? (
         <EmptyState icon={IconLinks} title="Nenhum clique em link neste período" className="border-none py-10" />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Link</TableHead>
-              <TableHead className="text-right">Cliques</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <>
+          {/* Abaixo do breakpoint, tabela vira lista de linhas tocáveis. */}
+          <div className="flex flex-col gap-1 sm:hidden">
             {links.map((link) => (
-              <TableRow key={link.id}>
-                <TableCell>
-                  <Link href="/links" className="flex flex-col">
-                    <span className="text-sm font-medium text-foreground">
-                      {link.label ?? `/r/${link.slug}`}
-                    </span>
-                    {link.productTitle && (
-                      <span className="line-clamp-1 text-xs text-muted-foreground">{link.productTitle}</span>
-                    )}
-                  </Link>
-                </TableCell>
-                <TableCell className="text-right font-medium tabular-nums">
+              <Link
+                key={link.id}
+                href="/links"
+                className="flex min-h-11 items-center justify-between gap-3 rounded-lg px-1 py-1.5 transition-colors hover:bg-muted/50"
+              >
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-sm font-medium text-foreground">
+                    {link.label ?? `/r/${link.slug}`}
+                  </span>
+                  {link.productTitle && (
+                    <span className="line-clamp-1 text-xs text-muted-foreground">{link.productTitle}</span>
+                  )}
+                </span>
+                <span className="shrink-0 text-sm font-medium tabular-nums text-foreground">
                   {formatCompact(link.clicks)}
-                </TableCell>
-              </TableRow>
+                </span>
+              </Link>
             ))}
-          </TableBody>
-        </Table>
+          </div>
+
+          <Table className="hidden sm:table">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Link</TableHead>
+                <TableHead className="text-right">Cliques</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {links.map((link) => (
+                <TableRow key={link.id}>
+                  <TableCell>
+                    <Link href="/links" className="flex flex-col">
+                      <span className="text-sm font-medium text-foreground">
+                        {link.label ?? `/r/${link.slug}`}
+                      </span>
+                      {link.productTitle && (
+                        <span className="line-clamp-1 text-xs text-muted-foreground">{link.productTitle}</span>
+                      )}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-right font-medium tabular-nums">
+                    {formatCompact(link.clicks)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </>
       )}
     </Section>
   );

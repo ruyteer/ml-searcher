@@ -7,21 +7,23 @@ import {
   IconAdicionar,
   IconEditar,
   IconExcluir,
-  IconInfo,
   IconAlerta,
   IconBuscar,
   IconLigar,
   IconDesligar,
   IconAtualizar,
+  IconFechar,
+  IconFiltrar,
 } from "@/components/icons";
 import { toast } from "sonner";
 import { Section } from "@/components/shell/section";
 import { EmptyState } from "@/components/shell/empty-state";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import {
   AlertDialog,
@@ -34,6 +36,8 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { formatDateTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { HelpTooltip } from "./field";
 import {
   deleteWatchesAction,
   toggleWatchAction,
@@ -58,15 +62,90 @@ interface CategoriasTabProps {
 /// desenhar tudo de uma vez trava a rolagem — o resto vem no "Mostrar mais".
 const PAGINA = 60;
 
-type Filtro = "todas" | "ligadas" | "desligadas" | "fora" | "sem-oferta";
+// Quatro filtros independentes (se combinam com "e"), em vez de um único
+// seletor que misturava estado, oferta e nicho numa lista só. São os que o
+// usuário realmente usa para achar uma categoria específica entre centenas.
+type FiltroEstado = "todas" | "ligadas" | "desligadas";
+type FiltroOferta = "todas" | "com" | "sem";
+type FiltroNicho = "todas" | "dentro" | "fora";
+type FiltroTermo = "todas" | "com" | "sem";
 
-const FILTROS: { valor: Filtro; label: string }[] = [
+const ESTADO_OPCOES: { valor: FiltroEstado; label: string }[] = [
   { valor: "todas", label: "Todas" },
   { valor: "ligadas", label: "Ligadas" },
   { valor: "desligadas", label: "Desligadas" },
-  { valor: "fora", label: "Fora do cuidado masculino" },
-  { valor: "sem-oferta", label: "Nunca renderam oferta" },
 ];
+const OFERTA_OPCOES: { valor: FiltroOferta; label: string }[] = [
+  { valor: "todas", label: "Todas" },
+  { valor: "com", label: "Com oferta" },
+  { valor: "sem", label: "Sem oferta" },
+];
+const NICHO_OPCOES: { valor: FiltroNicho; label: string }[] = [
+  { valor: "todas", label: "Todas" },
+  { valor: "dentro", label: "Cuidado masculino" },
+  { valor: "fora", label: "Fora do cuidado masculino" },
+];
+const TERMO_OPCOES: { valor: FiltroTermo; label: string }[] = [
+  { valor: "todas", label: "Todas" },
+  { valor: "com", label: "Com termo de busca" },
+  { valor: "sem", label: "Sem termo de busca" },
+];
+
+interface GrupoFiltroProps<T extends string> {
+  titulo: string;
+  opcoes: { valor: T; label: string }[];
+  valor: T;
+  onChange: (v: T) => void;
+  disabled?: boolean;
+}
+
+/// Um dos quatro grupos dentro do popover de filtros: um rótulo pequeno e um
+/// conjunto de botões, um único selecionado por vez dentro do grupo.
+function GrupoFiltro<T extends string>({ titulo, opcoes, valor, onChange, disabled }: GrupoFiltroProps<T>) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-xs font-medium text-muted-foreground">{titulo}</span>
+      <div className="flex flex-wrap gap-1">
+        {opcoes.map((o) => (
+          <Button
+            key={o.valor}
+            type="button"
+            variant={valor === o.valor ? "secondary" : "ghost"}
+            size="sm"
+            className="h-7 text-xs"
+            disabled={disabled}
+            onClick={() => onChange(o.valor)}
+          >
+            {o.label}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface FiltroChipProps {
+  label: string;
+  onClear: () => void;
+}
+
+/// Badge removível que mostra um filtro ativo direto na tela, sem precisar
+/// abrir o popover para saber o que está filtrando.
+function FiltroChip({ label, onClear }: FiltroChipProps) {
+  return (
+    <Badge variant="secondary" className="gap-1 py-0.5 pr-1 text-[11px]">
+      {label}
+      <button
+        type="button"
+        onClick={onClear}
+        aria-label={`Remover filtro ${label}`}
+        className="rounded-full p-0.5 hover:bg-foreground/15"
+      >
+        <HugeiconsIcon icon={IconFechar} size={10} strokeWidth={2} aria-hidden="true" />
+      </button>
+    </Badge>
+  );
+}
 
 interface Confirmacao {
   titulo: string;
@@ -93,7 +172,10 @@ export function CategoriasTab({ watches, globalMinDiscount }: CategoriasTabProps
   const [executando, setExecutando] = useState(false);
 
   const [search, setSearch] = useState("");
-  const [filtro, setFiltro] = useState<Filtro>("todas");
+  const [estado, setEstado] = useState<FiltroEstado>("todas");
+  const [oferta, setOferta] = useState<FiltroOferta>("todas");
+  const [nicho, setNicho] = useState<FiltroNicho>("todas");
+  const [termo, setTermo] = useState<FiltroTermo>("todas");
   const [visiveis, setVisiveis] = useState(PAGINA);
 
   const [numeros, setNumeros] = useState<Map<string, CategoriaNumeros> | null>(null);
@@ -165,8 +247,6 @@ export function CategoriasTab({ watches, globalMinDiscount }: CategoriasTabProps
     return numerosDe(watch.id)?.nicho === "masculino";
   }
 
-  const ligadasCount = lista.filter(ligada).length;
-
   const naoMasculinas = useMemo(
     () => (numeros ? lista.filter((w) => !cuidadoMasculino(w)) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -189,14 +269,38 @@ export function CategoriasTab({ watches, globalMinDiscount }: CategoriasTabProps
           (w.categoryId ?? "").toLowerCase().includes(busca);
         if (!casa) return false;
       }
-      if (filtro === "ligadas") return ligada(w);
-      if (filtro === "desligadas") return !ligada(w);
-      if (filtro === "fora") return numeros ? !cuidadoMasculino(w) : false;
-      if (filtro === "sem-oferta") return numeros ? (numerosDe(w.id)?.ofertas ?? 0) === 0 : false;
+      if (estado === "ligadas" && !ligada(w)) return false;
+      if (estado === "desligadas" && ligada(w)) return false;
+      if (termo === "com" && !w.query) return false;
+      if (termo === "sem" && w.query) return false;
+      if (oferta !== "todas") {
+        if (!numeros) return false;
+        const temOferta = (numerosDe(w.id)?.ofertas ?? 0) > 0;
+        if (oferta === "com" && !temOferta) return false;
+        if (oferta === "sem" && temOferta) return false;
+      }
+      if (nicho !== "todas") {
+        if (!numeros) return false;
+        const dentro = cuidadoMasculino(w);
+        if (nicho === "dentro" && !dentro) return false;
+        if (nicho === "fora" && dentro) return false;
+      }
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lista, busca, filtro, numeros, optimistic]);
+  }, [lista, busca, estado, oferta, nicho, termo, numeros, optimistic]);
+
+  const filtrosAtivos = [estado, oferta, nicho, termo].filter((v) => v !== "todas").length;
+  const temFiltroOuBusca = filtrosAtivos > 0 || busca !== "";
+
+  function limparFiltros() {
+    setSearch("");
+    setEstado("todas");
+    setOferta("todas");
+    setNicho("todas");
+    setTermo("todas");
+    setVisiveis(PAGINA);
+  }
 
   const naTela = filtradas.slice(0, visiveis);
   const selecionadasVisiveis = naTela.filter((w) => selecionadas.has(w.id)).length;
@@ -387,7 +491,7 @@ export function CategoriasTab({ watches, globalMinDiscount }: CategoriasTabProps
         title="Categorias monitoradas"
         description="A varredura passa em cada categoria ligada procurando queda de preço. Menos categoria e mais específica rende oferta melhor do que muita categoria genérica."
         actions={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             <form action={syncFormAction}>
               <SaveButton
                 variant="outline"
@@ -400,6 +504,10 @@ export function CategoriasTab({ watches, globalMinDiscount }: CategoriasTabProps
                 Buscar categorias no Mercado Livre
               </SaveButton>
             </form>
+            <HelpTooltip label="Buscar categorias no Mercado Livre">
+              Traz a lista oficial de categorias e cria as que faltam, sem mexer no que você já
+              ligou, desligou ou ajustou, e sem trazer de volta o que você excluiu.
+            </HelpTooltip>
             <Button size="sm" onClick={openCreate} className="gap-1.5">
               <HugeiconsIcon icon={IconAdicionar} size={16} strokeWidth={1.8} aria-hidden="true" /> Nova
               categoria
@@ -408,67 +516,132 @@ export function CategoriasTab({ watches, globalMinDiscount }: CategoriasTabProps
         }
       >
         <div className="mb-4 flex flex-col gap-3">
-          <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-            <HugeiconsIcon icon={IconInfo} size={14} strokeWidth={1.6} className="mt-0.5 shrink-0" aria-hidden="true" />
-            <span>
-              Categoria com termo de busca varre o catálogo do Mercado Livre por aquele termo, o que
-              alcança muito mais produto do que os destaques da categoria sozinha. &quot;Buscar
-              categorias no Mercado Livre&quot; traz a lista oficial de categorias e cria as que
-              faltam, sem mexer no que você já ligou, desligou ou ajustou, e sem trazer de volta o
-              que você excluiu.
-            </span>
-          </p>
-
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{ligadasCount}</span> ligadas de{" "}
-              <span className="font-medium text-foreground">{lista.length}</span> categorias
-              {numeros && naoMasculinas.length > 0 && (
-                <>
-                  {" · "}
-                  <span className="font-medium text-amber-500">{naoMasculinas.length}</span> fora do
-                  cuidado masculino
-                </>
-              )}
-            </p>
-            <div className="relative w-full max-w-xs">
-              <HugeiconsIcon
-                icon={IconBuscar}
-                size={14}
-                strokeWidth={1.6}
-                className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <Input
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setVisiveis(PAGINA);
-                }}
-                placeholder="Buscar por nome ou código da categoria..."
-                className="pl-8"
-              />
-            </div>
+          <div className="relative">
+            <HugeiconsIcon
+              icon={IconBuscar}
+              size={14}
+              strokeWidth={1.6}
+              className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setVisiveis(PAGINA);
+              }}
+              placeholder="Buscar por nome ou código da categoria..."
+              className="max-w-md pl-8 pr-8"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                aria-label="Limpar busca"
+                className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <HugeiconsIcon icon={IconFechar} size={13} strokeWidth={1.8} aria-hidden="true" />
+              </button>
+            )}
           </div>
 
-          {/* Faxinas de uma tacada só — é o que resolve uma lista com centenas de linhas. */}
           <div className="flex flex-wrap items-center gap-2">
-            {FILTROS.map((f) => (
-              <Button
-                key={f.valor}
-                type="button"
-                variant={filtro === f.valor ? "secondary" : "ghost"}
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => {
-                  setFiltro(f.valor);
-                  setVisiveis(PAGINA);
-                }}
+            <Popover>
+              <PopoverTrigger
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "sm" }),
+                  "gap-1.5 text-xs",
+                  filtrosAtivos > 0 && "border-primary/40 text-foreground",
+                )}
               >
-                {f.label}
+                <HugeiconsIcon icon={IconFiltrar} size={13} strokeWidth={1.6} aria-hidden="true" />
+                Filtros
+                {filtrosAtivos > 0 && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {filtrosAtivos}
+                  </Badge>
+                )}
+              </PopoverTrigger>
+              <PopoverContent className="flex w-72 flex-col gap-3" align="start">
+                <GrupoFiltro
+                  titulo="Estado"
+                  opcoes={ESTADO_OPCOES}
+                  valor={estado}
+                  onChange={(v) => {
+                    setEstado(v);
+                    setVisiveis(PAGINA);
+                  }}
+                />
+                <GrupoFiltro
+                  titulo="Ofertas"
+                  opcoes={OFERTA_OPCOES}
+                  valor={oferta}
+                  disabled={!numeros}
+                  onChange={(v) => {
+                    setOferta(v);
+                    setVisiveis(PAGINA);
+                  }}
+                />
+                <GrupoFiltro
+                  titulo="Nicho"
+                  opcoes={NICHO_OPCOES}
+                  valor={nicho}
+                  disabled={!numeros}
+                  onChange={(v) => {
+                    setNicho(v);
+                    setVisiveis(PAGINA);
+                  }}
+                />
+                <GrupoFiltro
+                  titulo="Termo de busca"
+                  opcoes={TERMO_OPCOES}
+                  valor={termo}
+                  onChange={(v) => {
+                    setTermo(v);
+                    setVisiveis(PAGINA);
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+
+            {estado !== "todas" && (
+              <FiltroChip
+                label={ESTADO_OPCOES.find((o) => o.valor === estado)!.label}
+                onClear={() => setEstado("todas")}
+              />
+            )}
+            {oferta !== "todas" && (
+              <FiltroChip
+                label={OFERTA_OPCOES.find((o) => o.valor === oferta)!.label}
+                onClear={() => setOferta("todas")}
+              />
+            )}
+            {nicho !== "todas" && (
+              <FiltroChip
+                label={NICHO_OPCOES.find((o) => o.valor === nicho)!.label}
+                onClear={() => setNicho("todas")}
+              />
+            )}
+            {termo !== "todas" && (
+              <FiltroChip
+                label={TERMO_OPCOES.find((o) => o.valor === termo)!.label}
+                onClear={() => setTermo("todas")}
+              />
+            )}
+            {temFiltroOuBusca && (
+              <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={limparFiltros}>
+                Limpar filtros
               </Button>
-            ))}
-            <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
+            )}
+
+            <p className="ml-auto text-sm text-muted-foreground">
+              Mostrando <span className="font-medium text-foreground">{naTela.length}</span> de{" "}
+              <span className="font-medium text-foreground">{filtradas.length}</span> categorias
+            </p>
+          </div>
+
+          {/* Faxinas de uma tacada só, o que resolve uma lista com centenas de linhas. */}
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               variant="outline"
@@ -590,7 +763,15 @@ export function CategoriasTab({ watches, globalMinDiscount }: CategoriasTabProps
                     />
                   </TableHead>
                   <TableHead>Categoria</TableHead>
-                  <TableHead>Termo</TableHead>
+                  <TableHead>
+                    <span className="inline-flex items-center gap-1">
+                      Termo
+                      <HelpTooltip label="Termo de busca">
+                        Categoria com termo de busca varre o catálogo do Mercado Livre por aquele termo, o
+                        que alcança muito mais produto do que os destaques da categoria sozinha.
+                      </HelpTooltip>
+                    </span>
+                  </TableHead>
                   <TableHead className="text-right">Produtos</TableHead>
                   <TableHead className="text-right">Ofertas</TableHead>
                   <TableHead>Desconto mínimo</TableHead>
@@ -745,10 +926,7 @@ export function CategoriasTab({ watches, globalMinDiscount }: CategoriasTabProps
             </Table>
 
             {filtradas.length > naTela.length && (
-              <div className="mt-4 flex items-center justify-center gap-3">
-                <span className="text-xs text-muted-foreground">
-                  Mostrando {naTela.length} de {filtradas.length}
-                </span>
+              <div className="mt-4 flex items-center justify-center">
                 <Button variant="outline" size="sm" onClick={() => setVisiveis((v) => v + PAGINA)}>
                   Mostrar mais
                 </Button>

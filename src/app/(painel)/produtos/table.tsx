@@ -5,6 +5,8 @@ import { getProducts, type ProductFilters, type WatchOption } from "@/lib/data/p
 import { getActivePresells } from "@/lib/data/offers";
 import { SortHeader } from "./sort-header";
 import { ProductRow } from "./product-row";
+import { ProductCard } from "./product-card";
+import { MobileSort } from "./mobile-sort";
 import { ProductsPagination } from "./products-pagination";
 
 /// Rótulo do filtro de disponibilidade, em português. Os valores da URL e do
@@ -65,26 +67,39 @@ export async function ProductsTable({
         {summarize(filters, result.items.length, result.total, watchLabel)}
       </p>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-14"></TableHead>
-            <SortHeader sortKey="title">Nome</SortHeader>
-            <SortHeader sortKey="price">Preço atual</SortHeader>
-            <TableHead>Menor preço já visto</TableHead>
-            <TableHead>Comparado com a média</TableHead>
-            <TableHead>Vendedor</TableHead>
-            <SortHeader sortKey="sold">Vendas</SortHeader>
-            <TableHead>Categoria monitorada</TableHead>
-            <SortHeader sortKey="lastSeen">Visto por último</SortHeader>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {result.items.map((product) => (
-            <ProductRow key={product.id} product={product} presells={presells} />
-          ))}
-        </TableBody>
-      </Table>
+      {/* Celular: uma tabela de nove colunas não cabe na tela, então cada
+          linha vira um cartão com o que decide a publicação. A ordenação, que
+          no desktop mora nos cabeçalhos das colunas, vira um seletor. */}
+      <div className="flex flex-col gap-2 md:hidden">
+        <MobileSort />
+        {result.items.map((product) => (
+          <ProductCard key={product.id} product={product} presells={presells} />
+        ))}
+      </div>
+
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-14"></TableHead>
+              <SortHeader sortKey="title">Nome</SortHeader>
+              <SortHeader sortKey="price">Preço atual</SortHeader>
+              <TableHead>Menor preço já visto</TableHead>
+              <TableHead>Comparado com a média</TableHead>
+              <TableHead>Vendedor</TableHead>
+              <SortHeader sortKey="sold">Vendas</SortHeader>
+              <TableHead>Categoria monitorada</TableHead>
+              <SortHeader sortKey="lastSeen">Visto por último</SortHeader>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {result.items.map((product) => (
+              <ProductRow key={product.id} product={product} presells={presells} />
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
       <ProductsPagination pageCount={result.pageCount} total={result.total} />
     </div>
   );

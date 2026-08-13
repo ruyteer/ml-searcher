@@ -21,6 +21,27 @@ export const detectionSchema = z
     path: ["hotDiscount"],
   });
 
+/// Só os campos que decidem o que APARECE, para a prévia calculada enquanto a
+/// pessoa mexe nos campos. Diferenças propositais em relação ao schema do
+/// formulário: `minPrice` já chega em centavos (o campo é mascarado e o cliente
+/// converte antes de mandar) e nada aqui reprova o envio — valor fora de faixa
+/// cai no limite mais próximo, porque a prévia precisa responder mesmo com a
+/// combinação ainda pela metade (ex.: "imperdível" abaixo do mínimo enquanto a
+/// pessoa está no meio da digitação).
+const zInteiroNaFaixa = (min: number, max: number) =>
+  z.preprocess((v) => {
+    const n = Math.round(Number(v));
+    if (!Number.isFinite(n)) return min;
+    return Math.min(max, Math.max(min, n));
+  }, z.number().int());
+
+export const detectionPreviewSchema = z.object({
+  minDiscount: zInteiroNaFaixa(0, 100),
+  hotDiscount: zInteiroNaFaixa(0, 100),
+  minPrice: zInteiroNaFaixa(0, 99_999_900),
+  minSoldQuantity: zInteiroNaFaixa(0, 1_000_000),
+});
+
 // -------------------------------------------------------------- links: domínio
 
 export const domainSchema = z.object({
@@ -31,6 +52,17 @@ export const domainSchema = z.object({
     .refine((v) => v === "" || /^https?:\/\/.+/i.test(v), {
       message: "Informe uma URL http(s) válida ou deixe em branco.",
     }),
+});
+
+// ------------------------------------------------------ filtro por palavras
+
+/// Teto generoso de texto cru: a lista é limpa e limitada pelo `parseWordList`
+/// depois, aqui só barramos um envio absurdo.
+const MAX_TEXTO_PALAVRAS = 8_000;
+
+export const wordFilterSchema = z.object({
+  filterExcludeWords: z.string().max(MAX_TEXTO_PALAVRAS),
+  filterRequireWords: z.string().max(MAX_TEXTO_PALAVRAS),
 });
 
 // ---------------------------------------------------------- links: afiliado

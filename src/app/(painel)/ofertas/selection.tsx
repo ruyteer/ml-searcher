@@ -66,23 +66,42 @@ export function BulkActionsBar() {
     });
   };
 
+  const contagem = `${selected.size} ${selected.size === 1 ? "oferta selecionada" : "ofertas selecionadas"}`;
+
+  // Fica grudada logo abaixo da barra do topo (h-14) enquanto o usuário rola a
+  // lista: no celular a seleção começa numa oferta e termina em outra, várias
+  // telas depois, e uma barra que sai da tela é uma barra que não existe.
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm">
-      <span className="font-medium">{selected.size} selecionada(s)</span>
-      <Button variant="outline" size="xs" disabled={isPending} onClick={() => run(OfferStatus.PUBLISHED)}>
-        {isPending ? (
-          <HugeiconsIcon icon={Loading03Icon} size={13} strokeWidth={1.5} className="animate-spin" />
-        ) : (
-          <HugeiconsIcon icon={TickDouble02Icon} size={13} strokeWidth={1.5} />
-        )}
-        Marcar publicadas
-      </Button>
-      <Button variant="outline" size="xs" disabled={isPending} onClick={() => run(OfferStatus.IGNORED)}>
-        Ignorar
-      </Button>
-      <Button variant="ghost" size="xs" onClick={clear}>
-        <HugeiconsIcon icon={Cancel01Icon} size={13} strokeWidth={1.5} /> Limpar
-      </Button>
+    <div className="sticky top-14 z-30 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm shadow-sm">
+      <span className="font-medium">{contagem}</span>
+      <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-11 sm:h-7"
+          disabled={isPending}
+          onClick={() => run(OfferStatus.PUBLISHED)}
+        >
+          {isPending ? (
+            <HugeiconsIcon icon={Loading03Icon} size={15} strokeWidth={1.5} className="animate-spin" />
+          ) : (
+            <HugeiconsIcon icon={TickDouble02Icon} size={15} strokeWidth={1.5} />
+          )}
+          Marcar publicadas
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-11 sm:h-7"
+          disabled={isPending}
+          onClick={() => run(OfferStatus.IGNORED)}
+        >
+          Ignorar
+        </Button>
+        <Button variant="ghost" size="sm" className="h-11 sm:h-7" onClick={clear}>
+          <HugeiconsIcon icon={Cancel01Icon} size={15} strokeWidth={1.5} /> Limpar
+        </Button>
+      </div>
     </div>
   );
 }

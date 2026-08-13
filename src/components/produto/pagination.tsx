@@ -22,12 +22,28 @@ export function Pagination({ page, pageCount, total, onPageChange, className }: 
       <span>
         Página {page} de {pageCount}, {total.toLocaleString("pt-BR")} no total
       </span>
+      {/* Alvo de 44px no celular: passar de página é o gesto mais repetido
+          desta tela e no toque um botão de 28px erra. */}
       <div className="flex items-center gap-1.5">
-        <Button variant="outline" size="icon-sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
-          <HugeiconsIcon icon={ChevronLeftIcon} size={15} strokeWidth={1.5} />
+        <Button
+          variant="outline"
+          size="icon-sm"
+          className="size-11 sm:size-7"
+          aria-label="Página anterior"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        >
+          <HugeiconsIcon icon={ChevronLeftIcon} size={18} strokeWidth={1.5} />
         </Button>
-        <Button variant="outline" size="icon-sm" disabled={page >= pageCount} onClick={() => onPageChange(page + 1)}>
-          <HugeiconsIcon icon={ChevronRightIcon} size={15} strokeWidth={1.5} />
+        <Button
+          variant="outline"
+          size="icon-sm"
+          className="size-11 sm:size-7"
+          aria-label="Próxima página"
+          disabled={page >= pageCount}
+          onClick={() => onPageChange(page + 1)}
+        >
+          <HugeiconsIcon icon={ChevronRightIcon} size={18} strokeWidth={1.5} />
         </Button>
       </div>
     </div>

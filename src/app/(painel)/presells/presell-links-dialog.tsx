@@ -116,6 +116,7 @@ export function PresellLinksDialog({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
+                  className="size-11 sm:size-7"
                   onClick={() => copy(link.slug)}
                   aria-label="Copiar link"
                 >

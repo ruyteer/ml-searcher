@@ -85,7 +85,7 @@ export function PhraseRow({ phrase, onEdit, showCategory = true }: PhraseRowProp
   }
 
   return (
-    <div className="group/row relative flex min-w-0 items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-muted/60 focus-within:bg-muted/60">
+    <div className="group/row relative flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-md px-1.5 py-1.5 transition-colors hover:bg-muted/60 focus-within:bg-muted/60">
       <Switch
         size="sm"
         checked={active}
@@ -97,8 +97,8 @@ export function PhraseRow({ phrase, onEdit, showCategory = true }: PhraseRowProp
       <button
         type="button"
         onClick={copy}
-        title="Clique para copiar a frase"
-        className="min-w-0 flex-1 rounded px-1 py-0.5 text-left"
+        title="Toque para copiar a frase"
+        className="min-h-11 min-w-0 flex-1 rounded px-1 py-0.5 text-left"
       >
         <span className={cn("block truncate text-sm", active ? "text-foreground" : "text-muted-foreground line-through")}>
           {phrase.text}
@@ -109,8 +109,10 @@ export function PhraseRow({ phrase, onEdit, showCategory = true }: PhraseRowProp
           {getCategoryLabel(phrase.category)}
         </span>
       )}
-      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100">
-        <Button type="button" variant="ghost" size="icon-sm" onClick={copy} aria-label="Copiar" title="Copiar">
+      {/* No celular não existe hover: as ações ficam sempre visíveis e podem
+          quebrar linha. No desktop, continuam aparecendo só no hover/foco. */}
+      <div className="flex shrink-0 items-center gap-0.5 sm:opacity-0 sm:transition-opacity sm:group-hover/row:opacity-100 sm:group-focus-within/row:opacity-100">
+        <Button type="button" variant="ghost" size="icon-sm" className="size-11 sm:size-7" onClick={copy} aria-label="Copiar" title="Copiar">
           {copied ? (
             <HugeiconsIcon icon={CheckmarkCircle02Icon} size={14} strokeWidth={1.5} className="text-primary" />
           ) : (
@@ -121,6 +123,7 @@ export function PhraseRow({ phrase, onEdit, showCategory = true }: PhraseRowProp
           type="button"
           variant="ghost"
           size="icon-sm"
+          className="size-11 sm:size-7"
           onClick={duplicate}
           disabled={isPending}
           aria-label="Duplicar"
@@ -132,6 +135,7 @@ export function PhraseRow({ phrase, onEdit, showCategory = true }: PhraseRowProp
           type="button"
           variant="ghost"
           size="icon-sm"
+          className="size-11 sm:size-7"
           onClick={onEdit}
           disabled={isPending}
           aria-label="Editar"
@@ -146,6 +150,7 @@ export function PhraseRow({ phrase, onEdit, showCategory = true }: PhraseRowProp
                 type="button"
                 variant="ghost"
                 size="icon-sm"
+                className="size-11 sm:size-7"
                 disabled={isPending}
                 aria-label="Excluir"
                 title="Excluir"

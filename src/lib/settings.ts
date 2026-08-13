@@ -2,6 +2,7 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { prisma } from "./prisma";
 import { TAGS, bust } from "./cache";
+import { parseWordList, type WordFilter } from "./word-filter";
 
 export const SETTINGS_TAG = TAGS.settings;
 
@@ -31,6 +32,18 @@ export const SETTINGS_SCHEMA = {
   mlClientId: { default: "", kind: "string" },
   mlClientSecret: { default: "", kind: "string" },
   mlSiteId: { default: "MLB", kind: "string" },
+
+  /// Filtro por palavras, definido pelo usuário na aba "Filtro por palavras".
+  /// Guardados como texto separado por vírgula (ver src/lib/word-filter.ts).
+  /// Moram aqui, e não num modelo próprio, porque são configuração global igual
+  /// às outras: viajam de graça no mesmo `findMany` já cacheado que alimenta a
+  /// app inteira, sem uma segunda consulta em cada varredura e em cada tela.
+  ///
+  /// Título que bate em QUALQUER uma destas some das telas e da varredura.
+  filterExcludeWords: { default: "", kind: "string" },
+  /// Assuntos de interesse: com a lista preenchida, só passa o título que bate
+  /// em PELO MENOS UMA. Vazia = sem restrição.
+  filterRequireWords: { default: "", kind: "string" },
 
   /// Uazapi (fase 6).
   uazapiHost: { default: "", kind: "string" },
@@ -92,6 +105,17 @@ export async function getSettings(): Promise<Settings> {
 
 export async function getSetting<K extends SettingKey>(key: K): Promise<Value<K>> {
   return (await load())[key];
+}
+
+/// As duas listas de palavras já quebradas, prontas para o motor de filtro.
+/// Sai do mesmo `load()` cacheado das outras configurações: nenhuma consulta
+/// extra ao banco, nem na varredura nem nas telas.
+export async function getWordFilter(): Promise<WordFilter> {
+  const s = await load();
+  return {
+    excluir: parseWordList(s.filterExcludeWords),
+    obrigatorias: parseWordList(s.filterRequireWords),
+  };
 }
 
 export async function setSettings(patch: Partial<Record<SettingKey, unknown>>) {

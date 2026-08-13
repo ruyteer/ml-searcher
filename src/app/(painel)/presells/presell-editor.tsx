@@ -18,6 +18,7 @@ import { UrlInput } from "@/components/form/url-input";
 import { SlugInput } from "@/components/form/slug-input";
 import { IntegerInput } from "@/components/form/integer-input";
 import { centsToMasked, moneyToCents } from "@/lib/mask";
+import { cn } from "@/lib/utils";
 import { LinkPicker } from "./link-picker";
 import { PresellPreview } from "./presell-preview";
 import { PresellVariableChips, UnknownVariableWarning } from "./presell-variable-chips";
@@ -100,6 +101,10 @@ export function PresellEditor({ mode, presell, eligibleLinks, previewProducts }:
   const [previewProductId, setPreviewProductId] = useState<string | null>(
     previewProducts[0]?.id ?? null,
   );
+
+  // Abaixo de lg, o formulário e o preview não cabem lado a lado — vira uma
+  // aba por vez para não obrigar a rolar a tela inteira pra ver o preview.
+  const [mobileTab, setMobileTab] = useState<"editar" | "preview">("editar");
 
   const headlineRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -205,11 +210,36 @@ export function PresellEditor({ mode, presell, eligibleLinks, previewProducts }:
         </p>
       </div>
 
+      {/* Alternador editar/preview, só abaixo de lg — nas telas largas os dois
+          ficam lado a lado e o alternador não faz sentido. */}
+      <div className="flex gap-1.5 rounded-lg bg-muted p-1 lg:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileTab("editar")}
+          className={cn(
+            "min-h-11 flex-1 rounded-md text-sm font-medium transition-colors",
+            mobileTab === "editar" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+          )}
+        >
+          Editar
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab("preview")}
+          className={cn(
+            "min-h-11 flex-1 rounded-md text-sm font-medium transition-colors",
+            mobileTab === "preview" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+          )}
+        >
+          Ver preview
+        </button>
+      </div>
+
       <form id="presell-form" action={formAction} className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {presell?.id && <input type="hidden" name="id" value={presell.id} />}
         <input type="hidden" name="isDefault" value={isDefault ? "1" : "0"} />
 
-        <div className="flex flex-col gap-5">
+        <div className={cn("flex flex-col gap-5", mobileTab === "preview" && "hidden lg:flex")}>
           <Section
             title="Identificação"
             description="Só você vê o nome. O endereço é a parte final do link que você vai colar no WhatsApp."
@@ -396,7 +426,7 @@ export function PresellEditor({ mode, presell, eligibleLinks, previewProducts }:
           </Section>
         </div>
 
-        <div className="lg:sticky lg:top-20 lg:self-start">
+        <div className={cn("lg:sticky lg:top-20 lg:self-start", mobileTab === "editar" && "hidden lg:block")}>
           <PresellPreview
             template={{
               title: title || "Novo modelo",

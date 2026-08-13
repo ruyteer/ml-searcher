@@ -25,6 +25,10 @@ const MAX_LOG_LINES = 800;
 export interface RunScrapeOptions {
   trigger?: "manual" | "cron";
   signal?: AbortSignal;
+  /// Execução já criada por startScrapeRun. Quando vem preenchida, a trava de
+  /// concorrência e a criação do registro já aconteceram lá, e runScrape só
+  /// preenche esta linha.
+  runId?: string;
 }
 
 export interface RunScrapeResult {
@@ -298,6 +302,30 @@ export class ScrapeAlreadyRunningError extends Error {
   }
 }
 
+export interface StartedRun {
+  runId: string;
+  watchesTotal: number;
+}
+
+/// Cria a linha do ScrapeRun e devolve o id NA HORA, antes de qualquer
+/// trabalho pesado. Sem isto, quem dispara a varredura não tem como saber
+/// qual execução é a sua: consultar "a mais recente" logo depois do disparo
+/// devolvia a execução ANTERIOR, já concluída em 100%, e a barra de progresso
+/// pulava para 100% antes de começar.
+export async function startScrapeRun(
+  trigger: "manual" | "cron" = "manual",
+): Promise<StartedRun> {
+  const active = await findActiveRun();
+  if (active) throw new ScrapeAlreadyRunningError(active.id);
+
+  const watchesTotal = await prisma.watch.count({ where: { enabled: true } });
+  const run = await prisma.scrapeRun.create({
+    data: { status: "RUNNING", trigger, watchesTotal },
+    select: { id: true },
+  });
+  return { runId: run.id, watchesTotal };
+}
+
 /// Marca como FAILED as execuções RUNNING antigas demais e devolve a que
 /// ainda está viva, se houver.
 async function findActiveRun() {
@@ -323,9 +351,13 @@ async function findActiveRun() {
 
 export async function runScrape(options: RunScrapeOptions = {}): Promise<RunScrapeResult> {
   const trigger = options.trigger ?? "manual";
+  const preCreatedId = options.runId;
 
-  const active = await findActiveRun();
-  if (active) throw new ScrapeAlreadyRunningError(active.id);
+  // Quem chamou startScrapeRun já passou pela trava e já tem a linha criada.
+  if (!preCreatedId) {
+    const active = await findActiveRun();
+    if (active) throw new ScrapeAlreadyRunningError(active.id);
+  }
 
   const settings = await getSettings();
   const fixture = await isFixtureMode();
@@ -335,10 +367,18 @@ export async function runScrape(options: RunScrapeOptions = {}): Promise<RunScra
     orderBy: { createdAt: "asc" },
   });
 
-  const run = await prisma.scrapeRun.create({
-    data: { status: "RUNNING", trigger, watchesTotal: watches.length },
-    select: { id: true },
-  });
+  // startScrapeRun cria a linha com uma contagem rápida de watches; aqui
+  // acertamos o total com a lista que a varredura realmente vai percorrer.
+  const run = preCreatedId
+    ? await prisma.scrapeRun.update({
+        where: { id: preCreatedId },
+        data: { watchesTotal: watches.length },
+        select: { id: true },
+      })
+    : await prisma.scrapeRun.create({
+        data: { status: "RUNNING", trigger, watchesTotal: watches.length },
+        select: { id: true },
+      });
 
   const log = new RunLog();
   log.add(`Varredura iniciada (${trigger}): ${watches.length} watch(es) habilitada(s).`);

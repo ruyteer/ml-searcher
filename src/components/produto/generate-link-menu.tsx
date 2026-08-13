@@ -69,7 +69,7 @@ export function GenerateLinkMenu({ productId, presells = [], onGenerated, size =
           </Button>
         }
       />
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="min-w-56">
         {/* DropdownMenuLabel = Menu.GroupLabel do Base UI: só funciona dentro
             de um DropdownMenuGroup. Fora do grupo ele lança no clique que abre
             o menu e derruba a página inteira. */}

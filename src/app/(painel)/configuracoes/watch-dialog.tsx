@@ -21,7 +21,7 @@ import { IntegerInput } from "@/components/form/integer-input";
 import { PercentInput } from "@/components/form/percent-input";
 import { FieldShell } from "@/components/form/field-shell";
 import { maskCategoryId } from "@/lib/mask";
-import { Field } from "./field";
+import { Field, FieldWithHelp } from "./field";
 import { AlertBox } from "./alert-box";
 import { createWatchAction, updateWatchAction, discoverDomainsAction } from "./actions";
 import { INITIAL_ACTION_STATE, type DiscoveredDomainOption } from "./action-state";
@@ -96,10 +96,8 @@ export function WatchDialog({ open, watch, onOpenChange }: WatchDialogProps) {
           <DialogHeader>
             <DialogTitle>{isEdit ? "Editar categoria monitorada" : "Nova categoria monitorada"}</DialogTitle>
             <DialogDescription>
-              O código de categoria do Mercado Livre identifica uma categoria oficial (ex.: MLB264787 =
-              Barbearia). Preenchendo um termo de busca, a coleta passa a varrer o catálogo do
-              Mercado Livre por esse termo, o que alcança muito mais produto do que só os destaques
-              da categoria.
+              Defina como a coleta encontra produtos desta categoria: por código, por termo de busca,
+              ou os dois.
             </DialogDescription>
           </DialogHeader>
 
@@ -121,7 +119,7 @@ export function WatchDialog({ open, watch, onOpenChange }: WatchDialogProps) {
               value={categoryId}
               onValueChange={(v) => setCategoryId(maskCategoryId(v))}
               placeholder="Ex.: MLB264787"
-              help="Prefixo do site (MLB, MLA...) seguido de números."
+              tooltip="Código oficial da categoria no Mercado Livre: prefixo do site (MLB, MLA...) seguido de números. Ex.: MLB264787 é Barbearia."
               error={err("categoryId")}
             />
             <Field
@@ -130,40 +128,46 @@ export function WatchDialog({ open, watch, onOpenChange }: WatchDialogProps) {
               value={query}
               onValueChange={setQuery}
               placeholder="Ex.: barbeador aparador"
+              tooltip="Faz a coleta varrer o catálogo do Mercado Livre por este termo, alcançando muito mais produto do que só os destaques da categoria."
               error={err("query")}
             />
           </div>
 
-          <FieldShell
-            id="watch-domainId"
+          <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+            <HugeiconsIcon icon={IconAlerta} size={13} strokeWidth={1.6} className="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
+            Sem código de categoria e sem termo de busca, esta categoria não coleta nada.
+          </p>
+
+          <FieldWithHelp
             label="Tipo de produto (opcional)"
-            hint="Sem o tipo de produto, a busca varre o catálogo inteiro e pode trazer coisa de outra área. Com ele, a busca já sai filtrada na origem: acha mais oferta boa em menos tempo. Descubra o tipo certo a partir do termo de busca ao lado ou digite na mão."
-            error={err("domainId")}
+            help="Sem o tipo de produto, a busca varre o catálogo inteiro e pode trazer coisa de outra área. Com ele, a busca já sai filtrada na origem: acha mais oferta boa em menos tempo. Descubra o tipo certo a partir do termo de busca abaixo ou digite na mão."
           >
-            <div className="flex items-center gap-2">
-              <Input
-                id="watch-domainId"
-                name="domainId"
-                value={domainId}
-                onChange={(e) => setDomainId(maskDomainId(e.target.value))}
-                placeholder="Ex.: MLB-RAZOR_BLADES"
-                className="font-mono uppercase"
-                aria-invalid={Boolean(err("domainId"))}
-              />
-              {domainId && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setDomainId("")}
-                  title="Limpar tipo de produto"
-                >
-                  <HugeiconsIcon icon={IconFechar} size={14} strokeWidth={1.6} aria-hidden="true" />
-                  <span className="sr-only">Limpar tipo de produto</span>
-                </Button>
-              )}
-            </div>
-          </FieldShell>
+            <FieldShell id="watch-domainId" label="Tipo de produto (opcional)" error={err("domainId")}>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="watch-domainId"
+                  name="domainId"
+                  value={domainId}
+                  onChange={(e) => setDomainId(maskDomainId(e.target.value))}
+                  placeholder="Ex.: MLB-RAZOR_BLADES"
+                  className="font-mono uppercase"
+                  aria-invalid={Boolean(err("domainId"))}
+                />
+                {domainId && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setDomainId("")}
+                    title="Limpar tipo de produto"
+                  >
+                    <HugeiconsIcon icon={IconFechar} size={14} strokeWidth={1.6} aria-hidden="true" />
+                    <span className="sr-only">Limpar tipo de produto</span>
+                  </Button>
+                )}
+              </div>
+            </FieldShell>
+          </FieldWithHelp>
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
@@ -239,27 +243,36 @@ export function WatchDialog({ open, watch, onOpenChange }: WatchDialogProps) {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <IntegerInput
+            <FieldWithHelp
               label="Limite por varredura"
-              name="limit"
-              min={10}
-              max={1000}
-              value={limit}
-              onValueChange={setLimit}
-              hint="Entre 10 e 1000 itens (padrão: 100)."
-              error={err("limit")}
-            />
-            <PercentInput
+              help="Quantos produtos a varredura examina por vez nesta categoria, de 10 a 1000."
+            >
+              <IntegerInput
+                label="Limite por varredura"
+                name="limit"
+                min={10}
+                max={1000}
+                value={limit}
+                onValueChange={setLimit}
+                defaultText="Padrão: 100"
+                error={err("limit")}
+              />
+            </FieldWithHelp>
+            <FieldWithHelp
               label="Desconto mínimo próprio"
-              name="minDiscount"
-              min={0}
-              max={90}
-              value={minDiscount}
-              onValueChange={setMinDiscount}
-              placeholder="Herda o global"
-              hint="Deixe vazio para usar o desconto mínimo global."
-              error={err("minDiscount")}
-            />
+              help="Deixe vazio para usar o desconto mínimo global, definido na aba Detecção de ofertas."
+            >
+              <PercentInput
+                label="Desconto mínimo próprio"
+                name="minDiscount"
+                min={0}
+                max={90}
+                value={minDiscount}
+                onValueChange={setMinDiscount}
+                placeholder="Herda o global"
+                error={err("minDiscount")}
+              />
+            </FieldWithHelp>
           </div>
 
           <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">

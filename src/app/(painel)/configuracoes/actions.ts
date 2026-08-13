@@ -22,17 +22,30 @@ import {
 import { BEAUTY_ROOT } from "@/lib/ml/categories";
 import { discoverDomains, isBeautyDomain } from "@/lib/ml/domains";
 import {
+  previewProdutosEscondidos,
+  recalcularProdutosEscondidos,
+} from "@/lib/data/products";
+import { previewOfertasEscondidas, previewOfertasVisiveis } from "@/lib/data/offers";
+import { formatWordList, parseWordList } from "@/lib/word-filter";
+import { normalizeVisibility } from "@/lib/offer-visibility";
+import {
+  detectionPreviewSchema,
   detectionSchema,
   domainSchema,
   affiliateSchema,
   mlSchema,
   watchSchema,
+  wordFilterSchema,
 } from "./schemas";
 import {
   type ActionState,
   type CategoriaNumerosResult,
   type DomainDiscoveryResult,
+  type EntradaDaPrevisaoDeDeteccao,
   type ExclusaoResult,
+  type PrevisaoDaDeteccao,
+  type PrevisaoDoFiltro,
+  PREVISAO_DETECCAO_VAZIA,
   ok,
   fail,
   zodErrors,
@@ -40,6 +53,10 @@ import {
 
 // ------------------------------------------------------- detecção de ofertas
 
+/// Salva a configuração de detecção. Ela decide duas coisas ao mesmo tempo: o
+/// que a próxima varredura vai procurar E o que as telas mostram do que já foi
+/// encontrado. Nenhuma oferta é apagada: subir o desconto mínimo esconde as
+/// menores, baixar de volta faz todas reaparecerem com o histórico intacto.
 export async function updateDetectionSettingsAction(
   _prev: ActionState,
   formData: FormData,
@@ -48,14 +65,124 @@ export async function updateDetectionSettingsAction(
   if (!parsed.success) return fail("Verifique os campos destacados.", zodErrors(parsed.error));
 
   const { minDiscount, hotDiscount, minHistoryPoints, minPrice, minSoldQuantity } = parsed.data;
+  const minPriceCents = toCents(minPrice);
+
   await setSettings({
     minDiscount,
     hotDiscount,
     minHistoryPoints,
-    minPrice: toCents(minPrice),
+    minPrice: minPriceCents,
     minSoldQuantity,
   });
-  return ok("Configurações de detecção salvas.");
+
+  // As telas de ofertas leem a configuração para decidir o que mostrar, então
+  // mudá-la muda a listagem e os contadores. (setSettings já invalidou as
+  // configurações; isto invalida quem depende delas.)
+  bust(TAGS.offers);
+
+  const { visiveis, escondidas, total } = await previewOfertasVisiveis(
+    normalizeVisibility({ minDiscount, hotDiscount, minPrice: minPriceCents, minSoldQuantity }),
+  );
+
+  if (escondidas === 0) {
+    return ok(`Configurações salvas. Todas as ${total} ofertas continuam aparecendo.`);
+  }
+  return ok(
+    `Configurações salvas. ${visiveis} de ${total} ofertas continuam aparecendo e ${escondidas} ficaram escondidas. Nada foi apagado: baixe o valor e elas voltam.`,
+  );
+}
+
+/// Prévia do efeito antes de salvar. Chamada direta pela aba (sem <form>)
+/// enquanto a pessoa mexe nos campos, igual à prévia do filtro por palavras.
+export async function previewDetectionAction(
+  entrada: EntradaDaPrevisaoDeDeteccao,
+): Promise<PrevisaoDaDeteccao> {
+  const parsed = detectionPreviewSchema.safeParse(entrada ?? {});
+  if (!parsed.success) {
+    return { ...PREVISAO_DETECCAO_VAZIA, ok: false, message: "Valores inválidos." };
+  }
+
+  try {
+    const impacto = await previewOfertasVisiveis(normalizeVisibility(parsed.data));
+    return { ...impacto, ok: true, message: "" };
+  } catch {
+    return {
+      ...PREVISAO_DETECCAO_VAZIA,
+      ok: false,
+      message: "Não foi possível calcular a prévia agora.",
+    };
+  }
+}
+
+// ------------------------------------------------------ filtro por palavras
+
+/// Salva as duas listas e recalcula, de uma vez, quais produtos ficam
+/// escondidos. Nada é apagado do banco: tirar a palavra e salvar de novo faz os
+/// produtos voltarem a aparecer.
+export async function updateWordFilterAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = wordFilterSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fail("Verifique os campos destacados.", zodErrors(parsed.error));
+
+  const excluir = parseWordList(parsed.data.filterExcludeWords);
+  const obrigatorias = parseWordList(parsed.data.filterRequireWords);
+
+  await setSettings({
+    filterExcludeWords: formatWordList(excluir),
+    filterRequireWords: formatWordList(obrigatorias),
+  });
+
+  const escondidos = await recalcularProdutosEscondidos({ excluir, obrigatorias });
+  // Produto escondido muda o que as telas de produtos e de ofertas mostram.
+  bust(TAGS.products);
+
+  if (excluir.length === 0 && obrigatorias.length === 0) {
+    return ok("Filtro por palavras desligado. Todos os produtos voltaram a aparecer.");
+  }
+  if (escondidos === 0) {
+    return ok("Palavras salvas. Nenhum produto do catálogo ficou escondido por elas.");
+  }
+  return ok(
+    `Palavras salvas. ${plural(escondidos, "produto está escondido", "produtos estão escondidos")} agora. Nada foi apagado: tire a palavra e eles voltam.`,
+  );
+}
+
+/// Prévia do impacto antes de salvar. Chamada direta pela aba (sem <form>)
+/// enquanto a pessoa monta as listas.
+export async function previewWordFilterAction(
+  excluirTexto: string,
+  obrigatoriasTexto: string,
+): Promise<PrevisaoDoFiltro> {
+  const filtro = {
+    excluir: parseWordList(String(excluirTexto ?? "")),
+    obrigatorias: parseWordList(String(obrigatoriasTexto ?? "")),
+  };
+
+  try {
+    const [produtos, ofertas] = await Promise.all([
+      previewProdutosEscondidos(filtro),
+      previewOfertasEscondidas(filtro),
+    ]);
+    return {
+      ok: true,
+      message: "",
+      produtosEscondidos: produtos.escondidos,
+      produtosTotal: produtos.total,
+      ofertasEscondidas: ofertas.escondidos,
+      ofertasTotal: ofertas.total,
+    };
+  } catch {
+    return {
+      ok: false,
+      message: "Não foi possível calcular a prévia agora.",
+      produtosEscondidos: 0,
+      produtosTotal: 0,
+      ofertasEscondidas: 0,
+      ofertasTotal: 0,
+    };
+  }
 }
 
 // -------------------------------------------------------------- links: domínio

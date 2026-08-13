@@ -176,7 +176,7 @@ export function PresellCard({ presell, publicHref, publicBase }: PresellCardProp
           </div>
 
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" />}>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" className="size-11 sm:size-7" />}>
               <HugeiconsIcon icon={IconMaisOpcoes} size={16} strokeWidth={1.8} aria-hidden="true" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

@@ -16,7 +16,9 @@ export function LinkDetailSheet({ children }: { children?: React.ReactNode }) {
         if (!open) setLinkId(null);
       }}
     >
-      <SheetContent className="flex flex-col gap-4 overflow-hidden p-0 sm:max-w-md">
+      <SheetContent
+        className="flex flex-col gap-4 overflow-hidden p-0 data-[side=right]:w-full data-[side=right]:sm:w-3/4 data-[side=right]:sm:max-w-md"
+      >
         {children}
       </SheetContent>
     </Sheet>

@@ -24,12 +24,20 @@ export function Section({
     <Card className={cn(className)}>
       {(title || description || actions) && (
         <CardHeader>
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex flex-col gap-1">
+          {/* No celular as ações caem para baixo do título: lado a lado elas
+              espremem o texto até virar duas letras por linha. */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+            <div className="flex min-w-0 flex-col gap-0.5 sm:gap-1">
               {title && <CardTitle>{title}</CardTitle>}
-              {description && <CardDescription>{description}</CardDescription>}
+              {description && (
+                <CardDescription className="text-[0.8125rem] leading-snug sm:text-sm">
+                  {description}
+                </CardDescription>
+              )}
             </div>
-            {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+            {actions && (
+              <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
+            )}
           </div>
         </CardHeader>
       )}

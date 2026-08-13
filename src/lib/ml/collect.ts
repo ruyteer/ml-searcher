@@ -25,6 +25,8 @@ import {
   tituloForaDoNicho,
 } from "./categories";
 import { normalize } from "./types";
+import { getWordFilter } from "../settings";
+import { hasWordFilter, matchedWords, type WordFilter } from "../word-filter";
 import type { NormalizedProduct } from "./types";
 import type { WatchQuery } from "./search";
 
@@ -46,6 +48,9 @@ export interface CollectWatchQuery extends WatchQuery {
 export interface CollectOptions {
   signal?: AbortSignal;
   siteId?: string;
+  /// Filtro por palavras do usuário. Quando não vem, é lido das configurações.
+  /// Existe como parâmetro para a coleta continuar previsível fora do painel.
+  wordFilter?: WordFilter;
 }
 
 /// Por que um produto foi descartado pela peneira de nicho.
@@ -74,6 +79,8 @@ export interface CollectResult {
   userProductCatalog: number;
   /// Produtos de catálogo inacessíveis por erro de rede/servidor.
   failedCatalog: number;
+  /// Descartados pelo filtro de palavras que o usuário configurou.
+  wordFiltered: number;
   /// Descartados por caírem fora do nicho de cuidado pessoal masculino.
   offNiche: number;
   /// Quantos caíram por cada motivo — é o que o log da varredura mostra.
@@ -112,6 +119,7 @@ const BASE: Omit<CollectResult, "products" | "source" | "note"> = {
   skippedCatalog: 0,
   userProductCatalog: 0,
   failedCatalog: 0,
+  wordFiltered: 0,
   offNiche: 0,
   offNicheByReason: zeroPorMotivo(),
   offNicheDuvidosos: 0,
@@ -119,11 +127,97 @@ const BASE: Omit<CollectResult, "products" | "source" | "note"> = {
   skipped: null,
 };
 
-// -------------------------------------------------------- peneira de nicho
-
 /// Quantos títulos descartados guardamos para o log. O suficiente para o
 /// usuário perceber que a peneira apertou demais, sem inundar a linha.
 const MAX_AMOSTRAS = 5;
+
+// ----------------------------------------------------- peneira de palavras
+
+export interface PalavrasResult {
+  products: NormalizedProduct[];
+  descartados: number;
+  /// Quantos títulos cada palavra de exclusão derrubou.
+  porPalavra: Record<string, number>;
+  /// Descartados por não conterem nenhuma das palavras obrigatórias.
+  semObrigatoria: number;
+  amostras: string[];
+}
+
+/// Aplica o filtro por palavras do usuário. É uma camada A MAIS, por cima da
+/// peneira de nicho: aquela decide o que é cuidado pessoal masculino, esta
+/// obedece ao que a pessoa escreveu nas configurações.
+///
+/// Roda ANTES da peneira de nicho de propósito. A peneira de nicho gasta
+/// chamada de API por produto (categoria e tipo de produto), e o título já vem
+/// pronto do resultado do catálogo, então tudo que a palavra derruba aqui é
+/// chamada de API que não é feita.
+export function peneirarPalavras(
+  products: NormalizedProduct[],
+  filter: WordFilter,
+): PalavrasResult {
+  if (!hasWordFilter(filter)) {
+    return { products, descartados: 0, porPalavra: {}, semObrigatoria: 0, amostras: [] };
+  }
+
+  const mantidos: NormalizedProduct[] = [];
+  const porPalavra: Record<string, number> = {};
+  const amostras: string[] = [];
+  let semObrigatoria = 0;
+
+  for (const product of products) {
+    const batidas = matchedWords(product.title, filter.excluir);
+    if (batidas.length > 0) {
+      for (const palavra of batidas) porPalavra[palavra] = (porPalavra[palavra] ?? 0) + 1;
+      if (amostras.length < MAX_AMOSTRAS) {
+        amostras.push(`${product.title} [palavra excluída: ${batidas.join(", ")}]`);
+      }
+      continue;
+    }
+
+    if (
+      filter.obrigatorias.length > 0 &&
+      matchedWords(product.title, filter.obrigatorias).length === 0
+    ) {
+      semObrigatoria += 1;
+      if (amostras.length < MAX_AMOSTRAS) {
+        amostras.push(`${product.title} [não contém nenhuma palavra obrigatória]`);
+      }
+      continue;
+    }
+
+    mantidos.push(product);
+  }
+
+  return {
+    products: mantidos,
+    descartados: products.length - mantidos.length,
+    porPalavra,
+    semObrigatoria,
+    amostras,
+  };
+}
+
+/// Frase em português para a linha de log da varredura. `null` quando o filtro
+/// não derrubou nada, para não poluir o log de quem não configurou palavra.
+function notaPalavras(result: PalavrasResult, origem: string): string | null {
+  if (result.descartados === 0) return null;
+
+  const partes: string[] = [];
+  const ranking = Object.entries(result.porPalavra).sort((a, b) => b[1] - a[1]);
+  for (const [palavra, n] of ranking) partes.push(`"${palavra}" pegou ${n}`);
+  if (result.semObrigatoria > 0) {
+    partes.push(`${result.semObrigatoria} sem nenhuma palavra obrigatória`);
+  }
+
+  console.log(`[palavras] ${origem}: ${partes.join(", ")}`);
+  for (const amostra of result.amostras) console.log(`[palavras]   descartado: ${amostra}`);
+
+  let nota = `filtro de palavras: ${result.descartados} descartado(s) (${partes.join(", ")})`;
+  if (result.amostras.length > 0) nota += `; exemplos: ${result.amostras.join(" | ")}`;
+  return nota;
+}
+
+// -------------------------------------------------------- peneira de nicho
 
 /// Tipo de produto (domain_id) de um produto de catálogo, com cache no módulo:
 /// a mesma varredura costuma repetir catálogo, e a chamada só acontece quando
@@ -290,17 +384,22 @@ export async function collectForWatch(
   const query = watch.query?.trim() || null;
   const categoryId = watch.categoryId?.trim() || null;
   const domainId = watch.domainId?.trim() || null;
+  const wordFilter = options.wordFilter ?? (await getWordFilter());
 
   // 1. fixtures
   if (await isFixtureMode()) {
     const items = fixtureSearch({ categoryId, query, limit });
-    const products = items.map(normalize);
+    const palavras = peneirarPalavras(items.map(normalize), wordFilter);
+    const notaFixtures = notaPalavras(palavras, "fixtures");
     return {
       ...BASE,
-      products,
+      products: palavras.products,
       source: "fixtures",
-      listingsSeen: products.length,
-      note: `fonte=fixtures, ${products.length} produto(s) de exemplo`,
+      listingsSeen: palavras.products.length,
+      wordFiltered: palavras.descartados,
+      note:
+        `fonte=fixtures, ${palavras.products.length} produto(s) de exemplo` +
+        (notaFixtures ? `; ${notaFixtures}` : ""),
     };
   }
 
@@ -330,18 +429,25 @@ export async function collectForWatch(
     if (found.note) parts.push(found.note);
 
     if (found.products.length > 0 || !categoryId) {
-      const peneira = await peneirarNicho(found.products, {
+      // Palavras primeiro: o que a pessoa não quer ver nem chega a custar as
+      // chamadas de categoria e de tipo de produto da peneira de nicho.
+      const palavras = peneirarPalavras(found.products, wordFilter);
+      const notaBusca = notaPalavras(palavras, `busca por termo "${query}"`);
+      if (notaBusca) parts.push(notaBusca);
+
+      const peneira = await peneirarNicho(palavras.products, {
         watchCategoryId: categoryId,
         signal: options.signal,
       });
       return comPeneira(
         {
           ...BASE,
-          products: found.products,
+          products: palavras.products,
           source: "search",
           listingsSeen: found.listingsSeen,
           skippedCatalog: found.withoutListings,
           failedCatalog: found.failed,
+          wordFiltered: palavras.descartados,
           offNiche: found.offNiche,
           note: parts.join(", "),
         },
@@ -355,24 +461,28 @@ export async function collectForWatch(
       signal: options.signal,
       siteId: options.siteId,
     });
-    const peneiraFallback = await peneirarNicho(fallback.products, {
+    const palavrasFallback = peneirarPalavras(fallback.products, wordFilter);
+    const notaFallback = notaPalavras(palavrasFallback, `destaques de ${categoryId}`);
+    const peneiraFallback = await peneirarNicho(palavrasFallback.products, {
       watchCategoryId: categoryId,
       signal: options.signal,
     });
     return comPeneira(
       {
         ...BASE,
-        products: fallback.products,
+        products: palavrasFallback.products,
         source: "highlights",
         listingsSeen: found.listingsSeen + fallback.listingsSeen,
         skippedCatalog: found.withoutListings + fallback.skipped,
         userProductCatalog: fallback.userProducts,
         failedCatalog: found.failed + fallback.failed,
+        wordFiltered: palavrasFallback.descartados,
         offNiche: found.offNiche,
         note:
           `${parts.join(", ")}; busca vazia, caiu para os destaques da categoria ` +
           `${categoryId}: ${fallback.highlightsSeen} produto(s) de catálogo, ` +
-          `${fallback.listingsSeen} anúncio(s) avaliado(s)`,
+          `${fallback.listingsSeen} anúncio(s) avaliado(s)` +
+          (notaFallback ? `; ${notaFallback}` : ""),
       },
       peneiraFallback,
       `destaques de ${categoryId}`,
@@ -405,10 +515,14 @@ export async function collectForWatch(
   }
   if (collected.failed > 0) parts.push(`${collected.failed} inacessível(is)`);
 
+  const palavras = peneirarPalavras(collected.products, wordFilter);
+  const notaDestaques = notaPalavras(palavras, `destaques de ${categoryId}`);
+  if (notaDestaques) parts.push(notaDestaques);
+
   // Os destaques de categoria não passam por nenhum filtro na origem, então é
   // aqui que a peneira faz mais diferença: uma categoria de maquiagem ligada
   // por engano deixava de entregar produto feminino direto no painel.
-  const peneira = await peneirarNicho(collected.products, {
+  const peneira = await peneirarNicho(palavras.products, {
     watchCategoryId: categoryId,
     signal: options.signal,
   });
@@ -416,12 +530,13 @@ export async function collectForWatch(
   return comPeneira(
     {
       ...BASE,
-      products: collected.products,
+      products: palavras.products,
       source: "highlights",
       listingsSeen: collected.listingsSeen,
       skippedCatalog: collected.skipped,
       userProductCatalog: collected.userProducts,
       failedCatalog: collected.failed,
+      wordFiltered: palavras.descartados,
       note: parts.join(", "),
     },
     peneira,

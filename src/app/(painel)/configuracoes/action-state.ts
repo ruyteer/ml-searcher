@@ -71,6 +71,65 @@ export interface CategoriaNumerosResult {
   itens: CategoriaNumeros[];
 }
 
+// ------------------------------------------------- filtro por palavras
+
+/// Prévia do impacto de uma lista de palavras que ainda NÃO foi salva: quantos
+/// produtos e quantas ofertas ficariam escondidos se ela valesse agora.
+/// Não usa useActionState (é chamada direta, com atraso, enquanto a pessoa
+/// digita), por isso não tem `ts`.
+export interface PrevisaoDoFiltro {
+  ok: boolean;
+  message: string;
+  produtosEscondidos: number;
+  produtosTotal: number;
+  ofertasEscondidas: number;
+  ofertasTotal: number;
+}
+
+export const PREVISAO_VAZIA: PrevisaoDoFiltro = {
+  ok: true,
+  message: "",
+  produtosEscondidos: 0,
+  produtosTotal: 0,
+  ofertasEscondidas: 0,
+  ofertasTotal: 0,
+};
+
+// ------------------------------------------------- detecção: o que aparece
+
+/// Os valores do formulário de detecção que decidem o que APARECE, do jeito
+/// que o cliente já os tem em mãos. `minPrice` vai em centavos (o campo é
+/// mascarado, o cliente converte com moneyToCents antes de mandar).
+export interface EntradaDaPrevisaoDeDeteccao {
+  minDiscount: number;
+  hotDiscount: number;
+  minPrice: number;
+  minSoldQuantity: number;
+}
+
+/// Prévia do efeito de uma configuração de detecção que ainda NÃO foi salva:
+/// quantas ofertas continuam aparecendo, quantas ficam escondidas e quantas
+/// ganham o destaque de imperdível. Nenhuma é apagada em momento algum.
+/// Não usa useActionState (é chamada direta, com atraso, enquanto a pessoa
+/// mexe nos campos), por isso não tem `ts`.
+export interface PrevisaoDaDeteccao {
+  ok: boolean;
+  message: string;
+  visiveis: number;
+  escondidas: number;
+  imperdiveis: number;
+  total: number;
+}
+
+export const PREVISAO_DETECCAO_VAZIA: PrevisaoDaDeteccao = {
+  ok: true,
+  message: "",
+  visiveis: 0,
+  escondidas: 0,
+  imperdiveis: 0,
+  total: 0,
+};
+
 /// Resultado de uma exclusão (uma ou várias de uma vez).
 export interface ExclusaoResult extends ActionState {
   /// Ids que saíram de verdade, para a lista sumir na hora.

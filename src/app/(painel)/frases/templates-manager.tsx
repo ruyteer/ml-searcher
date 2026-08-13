@@ -85,52 +85,94 @@ export function TemplatesManager({ templates, phrases }: TemplatesManagerProps) 
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
-      <Section title="Templates" description={`${templates.length} template(s)`}>
-        <div className="flex flex-col gap-1">
-          {templates.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setSelectedId(t.id)}
-              className={cn(
-                "flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
-                selected?.id === t.id ? "bg-accent text-accent-foreground" : "hover:bg-muted",
-              )}
-            >
-              <span className="min-w-0 flex-1 truncate">{t.name}</span>
-              {t.isDefault && (
-                <Badge variant="secondary" className="shrink-0">
-                  padrão
-                </Badge>
-              )}
-            </button>
-          ))}
-        </div>
-        <Button
+    <div className="flex flex-col gap-4">
+      {/* Abaixo de lg, a lista de templates vira chips roláveis na horizontal
+          em vez de uma coluna lateral, pra não empurrar o editor pra baixo. */}
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 lg:hidden">
+        {templates.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setSelectedId(t.id)}
+            className={cn(
+              "flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-medium whitespace-nowrap transition-colors",
+              selected?.id === t.id
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border text-muted-foreground hover:bg-muted",
+            )}
+          >
+            {t.name}
+            {t.isDefault && (
+              <Badge variant="secondary" className="shrink-0">
+                padrão
+              </Badge>
+            )}
+          </button>
+        ))}
+        <button
           type="button"
-          variant="outline"
-          size="sm"
-          className={cn("mt-3 w-full", selected === null && "border-primary text-primary")}
           onClick={() => setSelectedId(null)}
+          className={cn(
+            "flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-medium whitespace-nowrap transition-colors",
+            selected === null
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border text-muted-foreground hover:bg-muted",
+          )}
         >
           <HugeiconsIcon icon={PlusSignIcon} size={14} strokeWidth={1.5} />
           Novo template
-        </Button>
-      </Section>
+        </button>
+      </div>
 
-      {/* key força remontar o painel ao trocar de template (ou entrar em modo
-          "novo") — reseta o editor sem precisar sincronizar via effect. */}
-      <TemplateEditorPanel
-        key={selected?.id ?? "new"}
-        selected={selected}
-        phrases={phrases}
-        totalTemplates={templates.length}
-        actionPending={isPending}
-        onDuplicate={handleDuplicate}
-        onSetDefault={handleSetDefault}
-        onDelete={handleDelete}
-      />
+      <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+        <div className="hidden lg:block">
+          <Section title="Templates" description={`${templates.length} template(s)`}>
+            <div className="flex flex-col gap-1">
+              {templates.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setSelectedId(t.id)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
+                    selected?.id === t.id ? "bg-accent text-accent-foreground" : "hover:bg-muted",
+                  )}
+                >
+                  <span className="min-w-0 flex-1 truncate">{t.name}</span>
+                  {t.isDefault && (
+                    <Badge variant="secondary" className="shrink-0">
+                      padrão
+                    </Badge>
+                  )}
+                </button>
+              ))}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={cn("mt-3 w-full", selected === null && "border-primary text-primary")}
+              onClick={() => setSelectedId(null)}
+            >
+              <HugeiconsIcon icon={PlusSignIcon} size={14} strokeWidth={1.5} />
+              Novo template
+            </Button>
+          </Section>
+        </div>
+
+        {/* key força remontar o painel ao trocar de template (ou entrar em
+            modo "novo") — reseta o editor sem precisar sincronizar via effect. */}
+        <TemplateEditorPanel
+          key={selected?.id ?? "new"}
+          selected={selected}
+          phrases={phrases}
+          totalTemplates={templates.length}
+          actionPending={isPending}
+          onDuplicate={handleDuplicate}
+          onSetDefault={handleSetDefault}
+          onDelete={handleDelete}
+        />
+      </div>
     </div>
   );
 }
@@ -158,6 +200,9 @@ function TemplateEditorPanel({
   const [name, setName] = useState(selected?.name ?? "");
   const [body, setBody] = useState(selected?.body ?? "");
   const [previewFrase, setPreviewFrase] = useState<string | undefined>(undefined);
+  // Abaixo de md, formulário e preview não cabem lado a lado — vira uma aba
+  // por vez, mesma solução usada no editor de pre-sell.
+  const [mobileTab, setMobileTab] = useState<"editar" | "preview">("editar");
 
   const [state, formAction, formPending] = useActionState(
     selected ? updateTemplate : createTemplate,
@@ -176,7 +221,32 @@ function TemplateEditorPanel({
   }, [body, previewFrase]);
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="flex flex-col gap-4">
+      <div className="flex gap-1.5 rounded-lg bg-muted p-1 md:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileTab("editar")}
+          className={cn(
+            "min-h-11 flex-1 rounded-md text-sm font-medium transition-colors",
+            mobileTab === "editar" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+          )}
+        >
+          Editar
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab("preview")}
+          className={cn(
+            "min-h-11 flex-1 rounded-md text-sm font-medium transition-colors",
+            mobileTab === "preview" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+          )}
+        >
+          Ver preview
+        </button>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+      <div className={cn(mobileTab === "preview" && "hidden md:block")}>
       <Section title={selected ? "Editar template" : "Novo template"}>
         <form action={formAction} className="flex flex-col gap-3">
           {selected && <input type="hidden" name="id" value={selected.id} />}
@@ -252,14 +322,16 @@ function TemplateEditorPanel({
           </div>
         </form>
       </Section>
+      </div>
 
-      <div className="flex flex-col gap-4">
+      <div className={cn("flex flex-col gap-4", mobileTab === "editar" && "hidden md:flex")}>
         <Section title="Preview ao vivo" description="Como a mensagem chega no grupo">
           <MessagePreview body={previewBody} />
         </Section>
         <Section title="Frase de exemplo" description="Troque a frase usada no preview">
           <PhrasePicker phrases={phrases} onPick={(p: Phrase) => setPreviewFrase(p.text)} />
         </Section>
+      </div>
       </div>
     </div>
   );

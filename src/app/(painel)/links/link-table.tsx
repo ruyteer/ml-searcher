@@ -91,7 +91,16 @@ export function LinkTable({ rows }: { rows: LinkRow[] }) {
 
   return (
     <TooltipProvider>
-      <Table>
+      {/* Abaixo do breakpoint, a tabela densa vira uma lista de cartões: cada
+          um traz o essencial (produto/rótulo, endereço público com botão de
+          copiar grande, cliques) e as ações menos usadas ficam num menu. */}
+      <div className="flex flex-col gap-2 md:hidden">
+        {rows.map((row) => (
+          <LinkCard key={row.id} row={row} onOpen={() => setLinkId(row.id)} />
+        ))}
+      </div>
+
+      <Table className="hidden md:table">
         <TableHeader>
           <TableRow>
             <TableHead>Produto</TableHead>
@@ -125,6 +134,170 @@ export function LinkTable({ rows }: { rows: LinkRow[] }) {
         </TableBody>
       </Table>
     </TooltipProvider>
+  );
+}
+
+/// Cartão de link para telas de celular: mesma lógica da linha da tabela
+/// (ativar/desativar, copiar, abrir destino, excluir), mas em layout de uma
+/// coluna com alvos de toque grandes — a cópia da URL pública é a ação mais
+/// usada no celular, então ganha um botão grande e óbvio em vez de um ícone.
+function LinkCard({ row, onOpen }: { row: LinkRow; onOpen: () => void }) {
+  const router = useRouter();
+  const [active, setActive] = useState(row.active);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [, startTransition] = useTransition();
+
+  const badge = KIND_BADGE[row.kind];
+
+  function stop(e: React.SyntheticEvent) {
+    e.stopPropagation();
+  }
+
+  function handleToggleActive(next: boolean) {
+    setActive(next);
+    startTransition(async () => {
+      try {
+        await setLinkActiveAction(row.id, next);
+        router.refresh();
+      } catch {
+        setActive(!next);
+        toast.error("Não foi possível atualizar o link.");
+      }
+    });
+  }
+
+  function handleCopy(e: React.SyntheticEvent) {
+    stop(e);
+    navigator.clipboard
+      .writeText(row.publicHref)
+      .then(() => toast.success("URL copiada."))
+      .catch(() => toast.error("Não foi possível copiar."));
+  }
+
+  function handleOpenTarget(e: React.SyntheticEvent) {
+    stop(e);
+    window.open(row.targetUrl, "_blank", "noopener,noreferrer");
+  }
+
+  function handleDelete() {
+    startTransition(async () => {
+      try {
+        await deleteLinkAction(row.id);
+        toast.success("Link excluído.");
+        router.refresh();
+      } catch {
+        toast.error("Não foi possível excluir o link.");
+      }
+    });
+    setDeleteOpen(false);
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") onOpen();
+      }}
+      className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3"
+    >
+      <div className="flex items-start gap-2.5">
+        {row.product ? (
+          row.product.thumbnail ? (
+            <Image
+              src={row.product.thumbnail}
+              alt={row.product.title}
+              width={36}
+              height={36}
+              className="size-9 shrink-0 rounded-md object-cover ring-1 ring-border"
+            />
+          ) : (
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+              <HugeiconsIcon icon={IconSemImagem} size={14} strokeWidth={1.5} aria-hidden="true" />
+            </div>
+          )
+        ) : null}
+
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <span className="line-clamp-2 text-sm font-medium text-foreground">
+            {row.product ? row.product.title : row.label || "Link avulso"}
+          </span>
+          <Badge variant={badge.variant} className="w-fit">
+            {badge.label}
+          </Badge>
+        </div>
+
+        <div onClick={stop} className="shrink-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" className="size-11 sm:size-7" />}>
+              <HugeiconsIcon icon={IconMaisOpcoes} size={18} strokeWidth={1.8} aria-hidden="true" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleCopy}>
+                <HugeiconsIcon icon={IconCopiar} size={16} strokeWidth={1.6} aria-hidden="true" /> Copiar URL pública
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleOpenTarget}>
+                <HugeiconsIcon icon={IconAbrirFora} size={16} strokeWidth={1.6} aria-hidden="true" /> Abrir destino
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={(e) => {
+                  stop(e);
+                  setDeleteOpen(true);
+                }}
+              >
+                <HugeiconsIcon icon={IconExcluir} size={16} strokeWidth={1.6} aria-hidden="true" /> Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+            <AlertDialogContent onClick={stop}>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir este link?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  O histórico de cliques associado a ele será apagado junto e não pode ser desfeito.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  className={cn("bg-destructive text-destructive-foreground hover:bg-destructive/80")}
+                  onClick={handleDelete}
+                >
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1.5 rounded-lg bg-muted/40 px-2 py-1.5" onClick={stop}>
+        <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">
+          {row.publicHref}
+        </span>
+        <Button variant="outline" size="sm" className="min-h-11 shrink-0 gap-1.5 px-3" onClick={handleCopy}>
+          <HugeiconsIcon icon={IconCopiar} size={14} strokeWidth={1.8} aria-hidden="true" />
+          Copiar
+        </Button>
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground">
+          {formatCompact(row.clickCount)} cliques · {formatCompact(row.uniqueClicks)} únicos
+        </span>
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {row.lastClickAt ? formatDateTime(row.lastClickAt) : "Sem cliques"}
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between border-t border-border pt-2" onClick={stop}>
+        <span className="text-xs text-muted-foreground">Ativo</span>
+        <Switch checked={active} onCheckedChange={handleToggleActive} />
+      </div>
+    </div>
   );
 }
 

@@ -4,6 +4,7 @@ import { useQueryState } from "nuqs";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DeteccaoTab } from "./deteccao-tab";
 import { CategoriasTab } from "./categorias-tab";
+import { PalavrasTab } from "./palavras-tab";
 import { LinksTab } from "./links-tab";
 import { MercadoLivreTab } from "./mercado-livre-tab";
 import type { Watch } from "@/generated/prisma";
@@ -12,6 +13,7 @@ import type { PublicSettings } from "./types";
 const TABS = [
   { value: "deteccao", label: "Detecção de ofertas" },
   { value: "categorias", label: "Categorias monitoradas" },
+  { value: "palavras", label: "Filtro por palavras" },
   { value: "links", label: "Links e afiliado" },
   { value: "mercadolivre", label: "Mercado Livre" },
 ] as const;
@@ -53,6 +55,9 @@ export function ConfiguracoesTabs({ settings, watches, defaults }: Configuracoes
       </TabsContent>
       <TabsContent value="categorias" className="mt-4">
         <CategoriasTab watches={watches} globalMinDiscount={settings.minDiscount} />
+      </TabsContent>
+      <TabsContent value="palavras" className="mt-4">
+        <PalavrasTab settings={settings} />
       </TabsContent>
       <TabsContent value="links" className="mt-4">
         <LinksTab settings={settings} />
