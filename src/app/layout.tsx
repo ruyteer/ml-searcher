@@ -32,9 +32,25 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "ML Searcher",
-    // Barra de status escura e translúcida, com o conteúdo passando por
-    // baixo dela. Quem cuida do espaço é o env(safe-area-inset-top).
-    statusBarStyle: "black-translucent",
+    /*
+      Barra de status opaca e escura: o sistema reserva a faixa do relógio e
+      do recorte da câmera, e a página começa logo abaixo dela.
+
+      Antes estava "black-translucent", que faz o oposto: a página começa no
+      alto de tudo e passa por baixo do recorte, e só não fica escondida se
+      CADA elemento colado no topo lembrar de descer sozinho pelo valor da
+      área segura. Basta um esquecer (a tela de entrar, uma folha, um
+      diálogo, um aviso) para o conteúdo sumir debaixo do relógio, que foi
+      exatamente a queixa. Com a faixa reservada pelo sistema, esse tipo de
+      erro deixa de existir: nenhum elemento consegue ficar por baixo dela.
+
+      O que se perde: o desenho de borda a borda no topo (nada mais pinta
+      atrás do relógio) e o controle da cor daquela faixa, que passa a ser
+      decidida pelo sistema a partir do themeColor abaixo. Por isso o
+      themeColor acompanha exatamente o fundo do tema escuro, senão apareceria
+      uma listra de tom diferente encostada no topo do painel.
+    */
+    statusBarStyle: "black",
   },
   formatDetection: {
     // Preço e código de produto viravam link de telefone no iPhone.
@@ -68,7 +84,12 @@ export const viewport: Viewport = {
   maximumScale: 5,
   userScalable: true,
   viewportFit: "cover",
-  themeColor: "#131317",
+  /*
+    Mesmo tom do --background do tema escuro (oklch(0.145 0.006 260)). É esta
+    cor que o iPhone usa na faixa do relógio em app instalado, então qualquer
+    diferença aqui aparece como uma listra mais clara colada no topo.
+  */
+  themeColor: "#090a0d",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -78,7 +99,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`dark ${poppins.variable} ${geistMono.variable}`}
       suppressHydrationWarning
     >
-      <body className="min-h-screen antialiased">
+      {/*
+        Altura mínima em svh, não na medida antiga de tela cheia: no iPhone o
+        100vh conta a tela inteira, inclusive o pedaço que a barra do
+        navegador cobre, então a página ficava sempre um pouco maior que a
+        área visível. O svh é a menor área garantida, o valor que não muda
+        quando as barras do Safari aparecem e somem, então nada dança durante
+        a rolagem. Onde o elemento precisa acompanhar a área visível do
+        momento, e não a garantida, o certo é dvh; aqui é o oposto, porque
+        uma altura mínima que cresce e encolhe empurraria o conteúdo.
+      */}
+      <body className="min-h-svh antialiased">
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

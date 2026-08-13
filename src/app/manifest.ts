@@ -19,8 +19,8 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     orientation: "portrait",
     // Mesmos tons do tema escuro (--background e --primary de globals.css).
-    background_color: "#131317",
-    theme_color: "#131317",
+    background_color: "#090a0d",
+    theme_color: "#090a0d",
     categories: ["business", "shopping", "productivity"],
     icons: [
       {

@@ -18,7 +18,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const hasError = params?.error === "1";
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-background p-4">
+    // A tela de entrar fica fora do layout do painel, então os recuos de
+    // recorte de câmera e faixa de gesto precisam ser tratados aqui também.
+    // O max() mantém o 1rem de sempre onde não existe recorte nenhum, e o
+    // min-h-svh acompanha a área realmente visível no celular.
+    <div className="flex min-h-svh flex-col items-center justify-center gap-8 bg-background p-4 pt-[max(1rem,var(--area-segura-cima))] pr-[max(1rem,var(--area-segura-dir))] pb-[max(1rem,var(--area-segura-baixo))] pl-[max(1rem,var(--area-segura-esq))]">
       <div className="flex flex-col items-center gap-3 text-center">
         {/* O amarelo entra como preenchimento, com o símbolo em preto por cima */}
         <div className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">

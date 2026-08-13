@@ -72,7 +72,7 @@ export function BulkActionsBar() {
   // lista: no celular a seleção começa numa oferta e termina em outra, várias
   // telas depois, e uma barra que sai da tela é uma barra que não existe.
   return (
-    <div className="sticky top-14 z-30 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm shadow-sm">
+    <div className="sticky top-[calc(var(--altura-topbar)+var(--area-segura-cima))] z-30 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm shadow-sm">
       <span className="font-medium">{contagem}</span>
       <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
         <Button

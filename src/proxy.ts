@@ -8,7 +8,17 @@ const SESSION_COOKIE = "mls_session";
 
 // Prefixos que não exigem sessão: login, redirecionador público, pre-sells
 // públicas, rotas de auth/cron e os assets internos do Next.
-const PUBLIC_PREFIXES = ["/login", "/r/", "/p/", "/api/auth/", "/api/cron/"];
+// TEMPORÁRIO: /diagnostico-tela é a página de medição de recortes e alturas
+// do aparelho, aberta sem sessão para poder ser testada direto no celular.
+// Sai desta lista junto com a pasta src/app/diagnostico-tela.
+const PUBLIC_PREFIXES = [
+  "/login",
+  "/r/",
+  "/p/",
+  "/api/auth/",
+  "/api/cron/",
+  "/diagnostico-tela",
+];
 
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
