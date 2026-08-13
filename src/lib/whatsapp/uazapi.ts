@@ -170,7 +170,10 @@ export interface SendMediaInput {
   /// mandamos como "media", que é como a doc (mal resumida) sugeria.
   file: string;
   type: "image" | "video" | "videoplay" | "ptv" | "audio" | "myaudio" | "ptt";
-  caption?: string;
+  /// Legenda. O campo se chama "text" na API (confirmado no spec bruto),
+  /// não "caption" — mandar "caption" não dá erro, só é ignorado em
+  /// silêncio e a mídia sai sem nenhum texto.
+  text?: string;
   delay?: number;
 }
 

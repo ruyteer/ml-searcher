@@ -127,7 +127,7 @@ export async function runWhatsappCycle(requestHeaders?: Headers): Promise<Whatsa
             number: group.remoteJid,
             file: offer.product.thumbnail,
             type: "image",
-            caption: built.text,
+            text: built.text,
           });
         } else {
           await sendText(instance.host, instance.token, {
