@@ -53,12 +53,12 @@ export function LinkFilters() {
           placeholder="Buscar por slug ou produto..."
           defaultValue={state.q}
           onChange={(e) => setState({ q: e.target.value || null })}
-          className="pl-8"
+          className="min-h-11 pl-8 sm:min-h-0"
         />
       </div>
 
       <Select value={state.kind} onValueChange={(v) => setState({ kind: v as typeof state.kind })}>
-        <SelectTrigger className="w-full sm:w-40">
+        <SelectTrigger className="min-h-11 w-full sm:min-h-0 sm:w-40">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -74,7 +74,7 @@ export function LinkFilters() {
         value={state.active}
         onValueChange={(v) => setState({ active: v as typeof state.active })}
       >
-        <SelectTrigger className="w-full sm:w-36">
+        <SelectTrigger className="min-h-11 w-full sm:min-h-0 sm:w-36">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -88,7 +88,7 @@ export function LinkFilters() {
         value={state.period}
         onValueChange={(v) => setState({ period: v as typeof state.period })}
       >
-        <SelectTrigger className="w-full sm:w-40">
+        <SelectTrigger className="min-h-11 w-full sm:min-h-0 sm:w-40">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -104,6 +104,7 @@ export function LinkFilters() {
         <Button
           variant="ghost"
           size="sm"
+          className="h-11 sm:h-7"
           onClick={() => setState({ kind: null, active: null, q: null, period: null })}
         >
           <HugeiconsIcon icon={IconFechar} size={14} strokeWidth={1.8} aria-hidden="true" />

@@ -85,6 +85,14 @@ model Product {
 
   blocked       Boolean @default(false)
 
+  /// true quando o título bate no filtro de palavras que o usuário configurou
+  /// (palavra excluída presente, ou nenhuma das palavras obrigatórias presente).
+  /// É uma coluna MATERIALIZADA: recalculada de uma vez sempre que a lista de
+  /// palavras muda, para as telas filtrarem por um booleano indexado em vez de
+  /// rodar expressão regular sobre o título a cada consulta. Nada é apagado:
+  /// tirar a palavra recalcula a coluna e o produto volta a aparecer.
+  hiddenByWords Boolean @default(false)
+
   firstSeenAt   DateTime  @default(now())
   lastSeenAt    DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -97,6 +105,7 @@ model Product {
   @@index([categoryId])
   @@index([blocked])
   @@index([catalogId])
+  @@index([hiddenByWords])
 }
 
 /// Um ponto de preço por varredura. É daqui que sai o "mais barato que o normal".

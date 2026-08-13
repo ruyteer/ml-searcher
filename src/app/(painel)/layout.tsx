@@ -4,8 +4,11 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { isAuthenticated } from "@/lib/auth";
 import { SidebarProvider } from "@/components/shell/sidebar-context";
 import { AppSidebar } from "@/components/shell/app-sidebar";
+import { BottomNav } from "@/components/shell/bottom-nav";
+import { MobileNav } from "@/components/shell/mobile-nav";
 import { Topbar } from "@/components/shell/topbar";
 import { findActiveNavItem } from "@/components/shell/nav-items";
+import { InstalarApp, RegistrarSW } from "@/components/pwa";
 
 interface PainelLayoutProps {
   children: React.ReactNode;
@@ -28,13 +31,24 @@ export default async function PainelLayout({ children }: PainelLayoutProps) {
     <NuqsAdapter>
       <SidebarProvider>
         <div className="nav-progress-bar" aria-hidden="true" />
-        <div className="flex min-h-screen w-full">
+        <div className="flex min-h-svh w-full">
           <AppSidebar />
-          <div className="flex min-h-screen w-full flex-1 flex-col">
+          <div className="flex min-h-svh w-full min-w-0 flex-1 flex-col">
             <Topbar>{title}</Topbar>
-            <main className="flex-1 p-4 md:p-6">{children}</main>
+            {/*
+              O recuo de baixo no celular abre espaço para a barra de
+              navegação fixa e para a faixa de gesto do aparelho, senão o
+              último item da lista fica escondido atrás dela.
+            */}
+            <main className="min-w-0 flex-1 px-3 pt-4 pb-[calc(var(--altura-barra-inferior)+var(--area-segura-baixo)+1rem)] md:p-6 md:pb-6">
+              {children}
+            </main>
           </div>
         </div>
+        <BottomNav />
+        <MobileNav />
+        <RegistrarSW />
+        <InstalarApp />
       </SidebarProvider>
     </NuqsAdapter>
   );

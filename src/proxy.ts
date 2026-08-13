@@ -16,6 +16,11 @@ function isPublicPath(pathname: string): boolean {
   }
   return (
     pathname === "/favicon.ico" ||
+    // Arquivos do app instalável. O navegador busca o manifesto sem mandar
+    // cookie, e a página de "sem conexão" precisa ser guardada pelo service
+    // worker antes de qualquer coisa. Nenhum dos dois tem dado de ninguém.
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/offline.html" ||
     pathname.startsWith("/_next/") ||
     /\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|txt|xml)$/.test(pathname)
   );

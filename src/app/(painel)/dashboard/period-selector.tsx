@@ -19,7 +19,7 @@ export function PeriodSelector() {
 
   return (
     <Select value={period} onValueChange={(value) => setPeriod(value as typeof period)}>
-      <SelectTrigger size="sm" className="w-40" aria-label="Período">
+      <SelectTrigger size="sm" className="min-h-11 w-full sm:min-h-0 sm:w-40" aria-label="Período">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

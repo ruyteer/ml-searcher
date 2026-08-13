@@ -15,6 +15,8 @@ interface NavLinkProps {
   collapsed?: boolean;
   /// Fecha a Sheet mobile ao navegar.
   onNavigate?: () => void;
+  /// Ajustes pontuais de tamanho (a folha do celular usa alvo maior).
+  className?: string;
 }
 
 /**
@@ -27,7 +29,7 @@ interface NavLinkProps {
  * As regras de animação da barra e da troca de ícone vivem em globals.css
  * (.nav-item, .nav-item-indicator, .nav-item-icon).
  */
-export function NavLink({ item, collapsed, onNavigate }: NavLinkProps) {
+export function NavLink({ item, collapsed, onNavigate, className }: NavLinkProps) {
   const pathname = usePathname();
   const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
@@ -44,7 +46,8 @@ export function NavLink({ item, collapsed, onNavigate }: NavLinkProps) {
         collapsed && "justify-center pr-0 pl-0",
         isActive
           ? "font-semibold text-sidebar-foreground"
-          : "font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          : "font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
+        className
       )}
     >
       <span className="nav-item-indicator" aria-hidden="true" />

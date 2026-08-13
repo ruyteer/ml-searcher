@@ -79,7 +79,7 @@ export function PhrasesManager({ groups, categories }: PhrasesManagerProps) {
             type="button"
             onClick={() => setCategory(c.value)}
             className={cn(
-              "shrink-0 rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors",
+              "flex min-h-11 shrink-0 items-center rounded-full border px-3 text-xs font-medium whitespace-nowrap transition-colors",
               activeCategory === c.value
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border text-muted-foreground hover:bg-muted",
@@ -126,11 +126,11 @@ export function PhrasesManager({ groups, categories }: PhrasesManagerProps) {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Buscar frase..."
-                  className="pl-8"
+                  className="min-h-11 pl-8 sm:min-h-0"
                 />
               </div>
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as PhraseSortBy)}>
-                <SelectTrigger size="sm" className="w-40">
+                <SelectTrigger size="sm" className="min-h-11 w-40 sm:min-h-0">
                   <SelectValue>{(v: PhraseSortBy) => SORT_LABELS[v]}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -140,11 +140,11 @@ export function PhrasesManager({ groups, categories }: PhrasesManagerProps) {
               </Select>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setBulkOpen(true)}>
+              <Button type="button" variant="outline" size="sm" className="h-11 sm:h-7" onClick={() => setBulkOpen(true)}>
                 <HugeiconsIcon icon={ListPlusIcon} size={14} strokeWidth={1.5} />
                 Adicionar várias
               </Button>
-              <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+              <Button type="button" size="sm" className="h-11 sm:h-7" onClick={() => setCreateOpen(true)}>
                 <HugeiconsIcon icon={PlusSignIcon} size={14} strokeWidth={1.5} />
                 Nova frase
               </Button>

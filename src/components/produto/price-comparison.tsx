@@ -1,16 +1,12 @@
 import { formatBRL } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { referenceCopy } from "./offer-language";
 
 export interface PriceComparisonProps {
   /// Preço de agora, em centavos.
   price: number;
   /// Preço com que a oferta foi comparada, em centavos.
   referencePrice: number;
-  /// ML_ORIGINAL | HISTORY_AVG | HISTORY_MIN. Só entra aqui como código: o
-  /// texto exibido sai sempre de referenceCopy().
-  referenceKind: string;
   discountPct: number;
   /// A partir daqui o desconto vira destaque forte (settings.hotDiscount).
   hotDiscount?: number;
@@ -18,21 +14,20 @@ export interface PriceComparisonProps {
   className?: string;
 }
 
-/// Bloco "antes x agora" do card de oferta. Responde de cara a pergunta do
-/// usuário: qual era o preço, qual é o preço, quanto caiu e com o que foi
-/// comparado. O rótulo do valor antigo muda conforme a origem da comparação
-/// ("Preço cheio", "Média de 30 dias", "Menor preço anterior"), pra ninguém
-/// achar que o riscado é sempre o de/por do Mercado Livre.
+/// Bloco "antes x agora" do card de oferta. O preço riscado (menor, cinza) e
+/// o preço em destaque (maior, forte) já dizem sozinhos qual é qual: é a
+/// convenção que todo site de oferta usa, não precisa de rótulo "Preço
+/// cheio" / "Agora" escrito em cima. De onde veio a comparação (de/por do
+/// Mercado Livre, média de 30 dias, menor preço já visto) virou o selo
+/// OfferSourceBadge, sobre a imagem do card.
 export function PriceComparison({
   price,
   referencePrice,
-  referenceKind,
   discountPct,
   hotDiscount,
   size = "md",
   className,
 }: PriceComparisonProps) {
-  const copy = referenceCopy(referenceKind);
   const hasReference = referencePrice > price;
   const isHot = typeof hotDiscount === "number" && discountPct >= hotDiscount;
 
@@ -43,20 +38,14 @@ export function PriceComparison({
     <div className={cn("flex flex-col gap-1", className)}>
       <div className="flex items-end gap-3">
         {hasReference && (
-          <div className="flex min-w-0 flex-col">
-            <span className="text-[10px] leading-tight text-muted-foreground uppercase">{copy.beforeLabel}</span>
-            <span className="text-sm leading-tight tabular-nums text-muted-foreground line-through">
-              {formatBRL(referencePrice)}
-            </span>
-          </div>
+          <span className="text-sm leading-tight tabular-nums text-muted-foreground line-through">
+            {formatBRL(referencePrice)}
+          </span>
         )}
 
-        <div className="flex min-w-0 flex-col">
-          <span className="text-[10px] leading-tight text-muted-foreground uppercase">Agora</span>
-          <span className={cn("leading-tight font-semibold tabular-nums text-foreground", nowSize)}>
-            {formatBRL(price)}
-          </span>
-        </div>
+        <span className={cn("leading-tight font-semibold tabular-nums text-foreground", nowSize)}>
+          {formatBRL(price)}
+        </span>
 
         {discountPct > 0 && (
           <Badge

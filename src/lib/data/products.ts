@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
 import { publicUrl } from "@/lib/links";
 import { TAGS, bust } from "@/lib/cache";
+import { ACENTOS_DE, ACENTOS_PARA, wordPatterns, type WordFilter } from "@/lib/word-filter";
 import { Prisma, OfferStatus } from "@/generated/prisma";
 
 // ------------------------------------------------------------------ tipos
@@ -55,8 +56,94 @@ export interface WatchOption {
   label: string;
 }
 
+// -------------------------------------------------------- filtro por palavras
+
+/// Título normalizado DENTRO do Postgres, exatamente como o `normalizeText()`
+/// de src/lib/word-filter.ts faz no JavaScript: minúsculas, sem acento, só
+/// letra e número, espaços colapsados.
+///
+/// É `translate()` puro em vez da extensão `unaccent`: não depende de
+/// CREATE EXTENSION no banco do Railway, é imutável (logo pode entrar em índice
+/// se um dia precisar) e usa a mesma tabela de acentos exportada pelo motor de
+/// filtro, então as duas pontas não têm como discordar. É por isso que "óleo"
+/// digitado aqui encontra "Oleo" no título, e "oleo" encontra "Óleo".
+function tituloNormalizadoSql(coluna: Prisma.Sql): Prisma.Sql {
+  return Prisma.sql`btrim(regexp_replace(translate(lower(${coluna}), ${ACENTOS_DE}, ${ACENTOS_PARA}), '[^a-z0-9]+', ' ', 'g'))`;
+}
+
+/// Condição SQL "este título NÃO passa no filtro de palavras". `null` quando
+/// não há palavra configurada, ou seja, quando não há nada a esconder.
+///
+/// As expressões regulares saem do mesmo `wordPatterns()` que a varredura usa,
+/// e a sintaxe delas vale igual no `~` do Postgres e no RegExp do JavaScript.
+export function tituloEscondidoSql(filter: WordFilter, coluna: Prisma.Sql): Prisma.Sql | null {
+  const norm = tituloNormalizadoSql(coluna);
+  const excluir = wordPatterns(filter.excluir);
+  const obrigatorias = wordPatterns(filter.obrigatorias);
+
+  const partes: Prisma.Sql[] = [];
+  if (excluir.length > 0) {
+    const bate = excluir.map((p) => Prisma.sql`${norm} ~ ${p}`);
+    partes.push(Prisma.sql`(${Prisma.join(bate, " OR ")})`);
+  }
+  if (obrigatorias.length > 0) {
+    const bate = obrigatorias.map((p) => Prisma.sql`${norm} ~ ${p}`);
+    partes.push(Prisma.sql`NOT (${Prisma.join(bate, " OR ")})`);
+  }
+  if (partes.length === 0) return null;
+
+  return Prisma.sql`(${Prisma.join(partes, " OR ")})`;
+}
+
+export interface ImpactoDoFiltro {
+  /// Quantos ficariam escondidos com a lista informada.
+  escondidos: number;
+  /// Quantos existem no total (nada é apagado, só deixa de aparecer).
+  total: number;
+}
+
+/// Quantos produtos a lista informada esconderia, SEM salvar nada. Roda a
+/// expressão ao vivo (uma varredura da tabela), o que é aceitável porque só
+/// acontece enquanto a pessoa mexe na configuração, e nunca no uso normal.
+export async function previewProdutosEscondidos(filter: WordFilter): Promise<ImpactoDoFiltro> {
+  const total = await prisma.product.count();
+  const cond = tituloEscondidoSql(filter, Prisma.sql`"title"`);
+  if (!cond) return { escondidos: 0, total };
+
+  const rows = await prisma.$queryRaw<{ count: number }[]>(
+    Prisma.sql`SELECT COUNT(*)::int AS count FROM "Product" WHERE ${cond}`,
+  );
+  return { escondidos: rows[0]?.count ?? 0, total };
+}
+
+/// Recalcula Product.hiddenByWords no catálogo inteiro, num UPDATE só.
+///
+/// É o coração da decisão de desempenho: as telas nunca rodam expressão regular
+/// sobre o título, elas leem um booleano indexado. Este recálculo acontece
+/// apenas quando a lista de palavras muda, que é uma ação rara e manual.
+/// Nenhuma linha é apagada: tirar a palavra e salvar devolve os produtos.
+export async function recalcularProdutosEscondidos(filter: WordFilter): Promise<number> {
+  const cond = tituloEscondidoSql(filter, Prisma.sql`"title"`);
+
+  if (!cond) {
+    await prisma.product.updateMany({
+      where: { hiddenByWords: true },
+      data: { hiddenByWords: false },
+    });
+    return 0;
+  }
+
+  await prisma.$executeRaw(
+    Prisma.sql`UPDATE "Product" SET "hiddenByWords" = ${cond} WHERE "hiddenByWords" IS DISTINCT FROM ${cond}`,
+  );
+  return prisma.product.count({ where: { hiddenByWords: true } });
+}
+
 function whereFromFilters(filters: ProductFilters): Prisma.ProductWhereInput {
-  const where: Prisma.ProductWhereInput = {};
+  // O filtro por palavras vale sempre e não depende do que a tela pediu: o que
+  // não passa some da listagem E da contagem, para o número do topo nunca
+  // discordar do que está na tela.
+  const where: Prisma.ProductWhereInput = { hiddenByWords: false };
 
   if (filters.blocked === "blocked") where.blocked = true;
   else if (filters.blocked === "unblocked") where.blocked = false;

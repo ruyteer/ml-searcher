@@ -116,7 +116,7 @@ export function OfferActionsMenu({
             </Button>
           }
         />
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="min-w-60">
           <DropdownMenuGroup>
             <DropdownMenuLabel>Gerar link</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => runGenerate(LinkKind.DIRECT)}>

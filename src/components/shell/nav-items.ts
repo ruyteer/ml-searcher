@@ -26,13 +26,36 @@ export interface NavItem {
   iconAlt: AppIcon;
   /// Item ainda não liberado. Recebe um selo "em breve" e continua clicável (404 por ora).
   comingSoon?: boolean;
+  /// Rótulo curto, para a barra inferior do celular, onde cabe pouca coisa.
+  labelCurto?: string;
+  /// Aparece na barra inferior do celular. O resto vai para o botão "Mais".
+  principal?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Visão geral", icon: IconVisaoGeral, iconAlt: IconVisaoGeralAlt },
-  { href: "/ofertas", label: "Ofertas", icon: IconOfertas, iconAlt: IconOfertasAlt },
-  { href: "/produtos", label: "Produtos", icon: IconProdutos, iconAlt: IconProdutosAlt },
-  { href: "/links", label: "Links", icon: IconLinks, iconAlt: IconLinksAlt },
+  {
+    href: "/dashboard",
+    label: "Visão geral",
+    labelCurto: "Geral",
+    icon: IconVisaoGeral,
+    iconAlt: IconVisaoGeralAlt,
+    principal: true,
+  },
+  {
+    href: "/ofertas",
+    label: "Ofertas",
+    icon: IconOfertas,
+    iconAlt: IconOfertasAlt,
+    principal: true,
+  },
+  {
+    href: "/produtos",
+    label: "Produtos",
+    icon: IconProdutos,
+    iconAlt: IconProdutosAlt,
+    principal: true,
+  },
+  { href: "/links", label: "Links", icon: IconLinks, iconAlt: IconLinksAlt, principal: true },
   { href: "/presells", label: "Pre-sells", icon: IconPresells, iconAlt: IconPresellsAlt },
   { href: "/frases", label: "Frases", icon: IconFrases, iconAlt: IconFrasesAlt },
   {
@@ -49,6 +72,13 @@ export const NAV_ITEMS: NavItem[] = [
     iconAlt: IconConfiguracoesAlt,
   },
 ];
+
+/// Os quatro destinos que ficam sempre à mão na barra inferior do celular.
+/// São os que ele usa para achar uma oferta e sair com o link na mão.
+export const NAV_PRINCIPAIS: NavItem[] = NAV_ITEMS.filter((item) => item.principal);
+
+/// O resto, que abre no botão "Mais".
+export const NAV_SECUNDARIOS: NavItem[] = NAV_ITEMS.filter((item) => !item.principal);
 
 /// Encontra o item de navegação cujo href melhor casa com o pathname atual
 /// (prefixo mais longo), usado pelo topbar para exibir o título da página.

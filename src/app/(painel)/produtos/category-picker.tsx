@@ -80,8 +80,10 @@ export function CategoryPicker({ categories, totalProducts, uncategorized, recen
               disabled={isPending}
               onClick={() => pick(category.id)}
               className={cn(
-                "flex w-full flex-col items-start gap-2 rounded-xl p-3 text-left transition-colors",
-                "hover:bg-accent focus-visible:bg-accent focus-visible:outline-none disabled:opacity-60",
+                // min-h e p-4 no celular: o cartão inteiro é o alvo de toque,
+                // com folga de sobra além dos 44px.
+                "flex min-h-20 w-full flex-col items-start justify-center gap-2 rounded-xl p-4 text-left transition-colors sm:min-h-0 sm:p-3",
+                "hover:bg-accent focus-visible:bg-accent focus-visible:outline-none active:bg-accent disabled:opacity-60",
               )}
             >
               <span className="line-clamp-2 text-sm font-medium text-foreground">{category.label}</span>
@@ -111,7 +113,13 @@ export function CategoryPicker({ categories, totalProducts, uncategorized, recen
       </div>
 
       <div className="flex flex-wrap items-center gap-2 pt-1">
-        <Button variant="outline" size="sm" disabled={isPending} onClick={showAll}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-11 w-full whitespace-normal sm:h-7 sm:w-auto"
+          disabled={isPending}
+          onClick={showAll}
+        >
           Ver os {totalProducts.toLocaleString("pt-BR")} produtos de todas as categorias
         </Button>
         {uncategorized > 0 && (

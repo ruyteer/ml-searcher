@@ -16,12 +16,14 @@ export function EmptyState({ icon, title, description, action, className }: Empt
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border px-6 py-16 text-center",
+        // Menos altura no celular: dezesseis unidades de respiro em cima e
+        // embaixo ocupavam quase meia tela sem dizer nada.
+        "flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border px-4 py-10 text-center sm:px-6 sm:py-16",
         className
       )}
     >
       {icon && (
-        <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <div className="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground sm:size-12">
           <HugeiconsIcon icon={icon} size={20} strokeWidth={1.6} aria-hidden="true" />
         </div>
       )}

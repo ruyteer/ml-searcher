@@ -46,18 +46,20 @@ export function StatCard({
 
   return (
     <Card className={cn(className)}>
-      <CardContent className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">{label}</span>
+      <CardContent className="flex flex-col gap-1.5 sm:gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="min-w-0 truncate text-[0.8125rem] text-muted-foreground sm:text-sm">
+            {label}
+          </span>
           {icon && (
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-foreground">
+            <div className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-foreground sm:size-8">
               <HugeiconsIcon icon={icon} size={16} strokeWidth={1.6} aria-hidden="true" />
             </div>
           )}
         </div>
         {/* Número grande usa a fonte de display e dígito de largura fixa */}
         <span
-          className="font-heading text-2xl font-semibold tracking-tight text-foreground"
+          className="font-heading text-xl font-semibold tracking-tight text-foreground sm:text-2xl"
           data-numeric
         >
           {value}
