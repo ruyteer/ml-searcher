@@ -20,7 +20,7 @@ function instance(): PrismaClient {
   if (existing) return existing;
 
   const created = create();
-  if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = created;
+  globalForPrisma.prisma = created;
   return created;
 }
 
