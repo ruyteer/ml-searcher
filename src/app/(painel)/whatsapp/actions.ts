@@ -118,6 +118,8 @@ const scheduleSchema = z
     whatsappIntervalMinutes: z.coerce.number().int().min(5, "Mínimo de 5 minutos.").max(1440, "Máximo de 24 horas."),
     whatsappMinPerCycle: z.coerce.number().int().min(1, "Mínimo de 1 oferta."),
     whatsappMaxPerCycle: z.coerce.number().int().min(1, "Mínimo de 1 oferta."),
+    whatsappUsePresell: z.coerce.boolean(),
+    whatsappPresellId: z.string().trim().optional().default(""),
   })
   .refine((v) => v.whatsappMaxPerCycle >= v.whatsappMinPerCycle, {
     message: "O máximo não pode ser menor que o mínimo.",
@@ -130,6 +132,11 @@ export async function saveScheduleAction(_prev: ActionState, formData: FormData)
     whatsappIntervalMinutes: formData.get("whatsappIntervalMinutes"),
     whatsappMinPerCycle: formData.get("whatsappMinPerCycle"),
     whatsappMaxPerCycle: formData.get("whatsappMaxPerCycle"),
+    whatsappUsePresell: formData.get("whatsappUsePresell") === "true",
+    whatsappPresellId:
+      (formData.get("whatsappPresellId") as string | null) === "__default__"
+        ? ""
+        : formData.get("whatsappPresellId") || undefined,
   });
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Dados inválidos.");
 

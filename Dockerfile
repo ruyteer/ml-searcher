@@ -26,6 +26,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+# O negócio é 100% Brasil — "hoje", `setHours(0,0,0,0)` e afins precisam
+# bater com o fuso do usuário, não com o do datacenter (Railway = UTC).
+ENV TZ=America/Sao_Paulo
+RUN apk add --no-cache tzdata
 
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 

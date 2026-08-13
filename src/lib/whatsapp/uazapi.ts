@@ -161,3 +161,17 @@ export interface SendTextInput {
 export async function sendText(host: string, token: string, input: SendTextInput): Promise<void> {
   await request(host, "/send/text", "token", token, { body: input });
 }
+
+export interface SendMediaInput {
+  /// JID do destino: número (5511999999999) ou grupo (...@g.us).
+  number: string;
+  /// URL pública da mídia (a Uazapi baixa e reenvia).
+  media: string;
+  type: "image" | "video" | "videoplay" | "ptv" | "audio" | "myaudio" | "ptt";
+  caption?: string;
+  delay?: number;
+}
+
+export async function sendMedia(host: string, token: string, input: SendMediaInput): Promise<void> {
+  await request(host, "/send/media", "token", token, { body: input });
+}

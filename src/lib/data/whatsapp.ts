@@ -37,7 +37,11 @@ export interface WhatsappOverview {
     intervalMinutes: number;
     minPerCycle: number;
     maxPerCycle: number;
+    usePresell: boolean;
+    presellId: string;
   };
+  /// Pre-sells ativas, pro seletor do agendamento. Vazio = nenhuma cadastrada.
+  presells: { id: string; title: string }[];
   uazapiHost: string;
   adminTokenConfigured: boolean;
   stats: {
@@ -65,7 +69,7 @@ async function fetchOverview(): Promise<WhatsappOverview> {
     include: { groups: { orderBy: { name: "asc" } } },
   });
 
-  const [pendingOffers, sentToday, sentTotal, failedRecent, recentSendsRaw] = await Promise.all([
+  const [pendingOffers, sentToday, sentTotal, failedRecent, recentSendsRaw, presells] = await Promise.all([
     prisma.offer.count({
       where: {
         status: OfferStatus.NEW,
@@ -82,6 +86,11 @@ async function fetchOverview(): Promise<WhatsappOverview> {
       orderBy: { createdAt: "desc" },
       take: RECENT_SENDS_TAKE,
       include: { group: { select: { name: true } } },
+    }),
+    prisma.presell.findMany({
+      where: { active: true },
+      orderBy: { title: "asc" },
+      select: { id: true, title: true },
     }),
   ]);
 
@@ -105,7 +114,10 @@ async function fetchOverview(): Promise<WhatsappOverview> {
       intervalMinutes: settings.whatsappIntervalMinutes,
       minPerCycle: settings.whatsappMinPerCycle,
       maxPerCycle: settings.whatsappMaxPerCycle,
+      usePresell: settings.whatsappUsePresell,
+      presellId: settings.whatsappPresellId,
     },
+    presells,
     uazapiHost: settings.uazapiHost,
     adminTokenConfigured: Boolean(settings.uazapiAdminToken.trim()),
     stats: { pendingOffers, sentToday, sentTotal, failedRecent },
@@ -122,5 +134,5 @@ async function fetchOverview(): Promise<WhatsappOverview> {
 }
 
 export const getWhatsappOverview = unstable_cache(fetchOverview, ["whatsapp-overview"], {
-  tags: [TAGS.whatsapp, TAGS.offers, TAGS.settings],
+  tags: [TAGS.whatsapp, TAGS.offers, TAGS.settings, TAGS.presells],
 });
