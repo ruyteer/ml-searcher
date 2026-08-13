@@ -165,8 +165,10 @@ export async function sendText(host: string, token: string, input: SendTextInput
 export interface SendMediaInput {
   /// JID do destino: número (5511999999999) ou grupo (...@g.us).
   number: string;
-  /// URL pública da mídia (a Uazapi baixa e reenvia).
-  media: string;
+  /// URL pública da mídia (a Uazapi baixa e reenvia). O campo se chama
+  /// "file" na API — confirmado pelo erro "missing file field" quando
+  /// mandamos como "media", que é como a doc (mal resumida) sugeria.
+  file: string;
   type: "image" | "video" | "videoplay" | "ptv" | "audio" | "myaudio" | "ptt";
   caption?: string;
   delay?: number;

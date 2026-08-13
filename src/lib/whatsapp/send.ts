@@ -125,7 +125,7 @@ export async function runWhatsappCycle(requestHeaders?: Headers): Promise<Whatsa
         if (offer.product.thumbnail) {
           await sendMedia(instance.host, instance.token, {
             number: group.remoteJid,
-            media: offer.product.thumbnail,
+            file: offer.product.thumbnail,
             type: "image",
             caption: built.text,
           });
