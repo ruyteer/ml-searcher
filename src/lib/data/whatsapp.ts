@@ -59,7 +59,8 @@ function startOfToday(): Date {
   return d;
 }
 
-const RECENT_SENDS_TAKE = 30;
+// Com paginação client-side na tela, vale trazer mais histórico de uma vez.
+const RECENT_SENDS_TAKE = 100;
 
 async function fetchOverview(): Promise<WhatsappOverview> {
   const settings = await getSettings();
