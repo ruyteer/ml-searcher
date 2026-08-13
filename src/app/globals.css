@@ -72,8 +72,26 @@
   --area-segura-baixo: env(safe-area-inset-bottom, 0px);
   --area-segura-esq: env(safe-area-inset-left, 0px);
   --area-segura-dir: env(safe-area-inset-right, 0px);
-  /* Altura da barra de navegação inferior, sem contar a área segura. */
+  /* Altura da linha de ícones da barra de navegação inferior. */
   --altura-barra-inferior: 3.5rem;
+  /* Altura da topbar, para quem precisa grudar logo abaixo dela.
+     No computador ela cresce, ver a media query mais abaixo. */
+  --altura-topbar: 3rem;
+  /*
+    Recuo de baixo da barra fixa.
+
+    Usar o valor cru da faixa de gesto do iPhone (cerca de 34px) somava mais
+    de 90px de barra, e o pedaço vazio abaixo dos ícones lia como margem
+    sobrando. Aqui vale um piso e um teto: piso para o aparelho sem faixa
+    nenhuma (Android e navegador comum, onde o valor é zero) e teto para o
+    iPhone. O fundo continua indo até a borda de baixo, porque quem recebe
+    este recuo é o preenchimento, não a posição da barra.
+  */
+  --recuo-barra-inferior: clamp(0.5rem, var(--area-segura-baixo), 1.25rem);
+  /* Espaço total que o conteúdo precisa deixar livre embaixo no celular. */
+  --altura-barra-inferior-total: calc(
+    var(--altura-barra-inferior) + var(--recuo-barra-inferior)
+  );
 
   --radius: 0.65rem;
   --background: oklch(1 0 0);
@@ -170,6 +188,16 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  /*
+    Em app instalado não existe puxar para atualizar, então o rebote do iOS
+    só atrapalha: ele arrasta a página inteira e deixa o topo do painel
+    passar por baixo do relógio até o dedo soltar.
+  */
+  @media (display-mode: standalone) {
+    body {
+      overscroll-behavior-y: none;
+    }
   }
   html {
     @apply font-sans;
@@ -460,5 +488,16 @@ html[data-navigating="true"] .nav-progress-bar {
   .nav-item[data-active="true"] .nav-item-icon > svg[data-variant="alt"] {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+/*
+  A topbar tem 3rem no celular e 3.5rem a partir de md. Quem gruda logo
+  abaixo dela (a barra de ações em massa das ofertas) precisa do mesmo valor,
+  senão sobra uma fresta e o conteúdo aparece passando por trás.
+*/
+@media (min-width: 48rem) {
+  :root {
+    --altura-topbar: 3.5rem;
   }
 }

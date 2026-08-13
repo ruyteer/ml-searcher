@@ -31,7 +31,10 @@ export function MobileNav() {
     <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
       <SheetContent
         side="bottom"
-        className="max-h-[85svh] gap-0 overflow-y-auto rounded-t-2xl bg-sidebar pb-[calc(1rem+var(--area-segura-baixo))] md:hidden"
+        // O recuo de baixo usa a mesma medida com piso e teto da barra de
+        // navegação: o último item fica acima da faixa de gesto sem abrir
+        // aquele espaço morto que o valor cru da área segura deixava.
+        className="max-h-[85svh] gap-0 overflow-y-auto rounded-t-2xl bg-sidebar pb-[calc(0.75rem+var(--recuo-barra-inferior))] md:hidden"
       >
         <SheetHeader className="flex-row items-center gap-2.5 pb-3">
           <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">

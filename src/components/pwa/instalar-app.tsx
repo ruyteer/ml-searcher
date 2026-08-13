@@ -99,8 +99,10 @@ export function InstalarApp() {
 
   return (
     <div
-      // Acima da barra de navegação no celular; canto inferior no desktop.
-      className="fixed inset-x-3 bottom-[calc(4.25rem+var(--area-segura-baixo))] z-50 rounded-xl border border-border bg-popover p-3 shadow-lg md:inset-x-auto md:right-4 md:bottom-4 md:w-80"
+      // Logo acima da barra de navegação no celular, usando a altura real
+      // dela (linha de ícones + recuo da faixa de gesto), senão o aviso
+      // flutuava alto demais. No computador vai para o canto de baixo.
+      className="fixed inset-x-3 bottom-[calc(var(--altura-barra-inferior-total)+0.75rem)] z-50 rounded-xl border border-border bg-popover p-3 shadow-lg md:inset-x-auto md:right-4 md:bottom-4 md:w-80"
       role="dialog"
       aria-label="Instalar o painel no celular"
     >

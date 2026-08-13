@@ -36,11 +36,18 @@ export default async function PainelLayout({ children }: PainelLayoutProps) {
           <div className="flex min-h-svh w-full min-w-0 flex-1 flex-col">
             <Topbar>{title}</Topbar>
             {/*
-              O recuo de baixo no celular abre espaço para a barra de
-              navegação fixa e para a faixa de gesto do aparelho, senão o
-              último item da lista fica escondido atrás dela.
+              O recuo de baixo no celular reserva exatamente a altura da
+              barra de navegação fixa (linha de ícones + recuo da faixa de
+              gesto, a mesma conta que a barra usa), mais um respiro de
+              1rem. Reservar o valor cru da área segura aqui, como estava
+              antes, sobrava espaço em relação à barra e dava a impressão de
+              vão embaixo da lista.
+
+              Recuos laterais por lado, sem atalho: em tela deitada o
+              recorte da câmera come a lateral, e o max() garante os 0.75rem
+              de sempre quando não existe recorte nenhum.
             */}
-            <main className="min-w-0 flex-1 px-3 pt-4 pb-[calc(var(--altura-barra-inferior)+var(--area-segura-baixo)+1rem)] md:p-6 md:pb-6">
+            <main className="min-w-0 flex-1 pt-4 pr-[max(0.75rem,var(--area-segura-dir))] pb-[calc(var(--altura-barra-inferior-total)+1rem)] pl-[max(0.75rem,var(--area-segura-esq))] md:pt-6 md:pr-6 md:pb-6 md:pl-6">
               {children}
             </main>
           </div>

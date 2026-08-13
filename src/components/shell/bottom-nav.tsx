@@ -74,7 +74,13 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Navegação principal"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 pb-[var(--area-segura-baixo)] backdrop-blur-md md:hidden"
+      // A barra encosta na borda de baixo e o fundo vai junto até lá. O que
+      // sobe é só o conteúdo, pelo recuo com piso e teto de globals.css:
+      // os ícones ficam fora da faixa de gesto sem deixar aquele vão.
+      // Fundo sólido, sem vidro: translúcido com desfoque, o pedaço abaixo
+      // dos ícones mostrava a página passando por trás e lia como espaço
+      // vazio em vez de parte da barra.
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background pr-[var(--area-segura-dir)] pb-[var(--recuo-barra-inferior)] pl-[var(--area-segura-esq)] md:hidden"
     >
       <ul className="grid grid-cols-5">
         {NAV_PRINCIPAIS.map((item) => (

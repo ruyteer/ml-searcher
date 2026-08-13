@@ -55,6 +55,21 @@ function DialogContent({
         data-slot="dialog-content"
         className={cn(
           "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          /*
+            Recortes do aparelho.
+
+            O diálogo é centralizado na tela inteira, e a tela inteira inclui
+            o recorte da câmera em cima e a faixa de gesto embaixo. Um
+            diálogo alto encostava nos dois.
+
+            A altura máxima desconta os dois recortes e ainda deixa 1rem de
+            folga de cada lado; passando disso, o próprio diálogo rola. E a
+            margem de cima empurra o centro pela metade da diferença entre os
+            dois recortes, que é o ponto exato entre eles: sem isso, com
+            recorte grande em cima e pequeno embaixo, o centro da tela não é
+            o centro do espaço livre.
+          */
+          "mt-[calc((var(--area-segura-cima)_-_var(--area-segura-baixo))/2)] max-h-[calc(100svh_-_2rem_-_var(--area-segura-cima)_-_var(--area-segura-baixo))] overflow-y-auto",
           className
         )}
         {...props}

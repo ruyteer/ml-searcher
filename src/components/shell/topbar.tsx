@@ -18,7 +18,11 @@ interface TopbarProps {
  */
 export function Topbar({ children }: TopbarProps) {
   return (
-    <header className="sticky top-0 z-40 shrink-0 border-b border-border bg-background/80 pt-[var(--area-segura-cima)] backdrop-blur-sm">
+    // O recuo de cima vale zero no app instalado, porque agora quem reserva
+    // a faixa do relógio é o sistema (ver appleWebApp em src/app/layout.tsx).
+    // Ele continua aqui para o caso de o painel ser aberto pelo navegador com
+    // a tela deitada, quando o recorte da câmera volta a invadir a página.
+    <header className="sticky top-0 z-40 shrink-0 border-b border-border bg-background/80 pt-[var(--area-segura-cima)] pr-[var(--area-segura-dir)] pl-[var(--area-segura-esq)] backdrop-blur-sm">
       <div className="flex h-12 items-center gap-2.5 px-3 md:h-14 md:px-4">
         <Link
           href="/dashboard"
