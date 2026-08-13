@@ -3,6 +3,7 @@ import { prisma } from "../prisma";
 import { formatBRL } from "../format";
 import { createLink, publicUrl } from "../links";
 import type { Settings } from "../settings";
+import { LinkKind } from "@/generated/prisma";
 
 /// Corpo usado quando não existe nenhum MessageTemplate cadastrado ainda —
 /// a app tem que funcionar sem setup nenhum no painel de frases.
@@ -56,21 +57,27 @@ export interface BuiltMessage {
 }
 
 /// Monta o texto pronto pra enviar: sorteia frase e template, gera um Link
-/// rastreado (TRACKED) pro produto e substitui as variáveis. O link rastreado
-/// é o que dá o preview bonito no WhatsApp — a página /r/{slug} redireciona
-/// pro destino final contabilizando o clique antes.
+/// pro produto e substitui as variáveis. Com `whatsappUsePresell` desligado
+/// é um link rastreado (TRACKED) que passa por /r/{slug}; ligado, é PRESELL e
+/// passa direto por /p/{slug} — mesma convenção do botão "Gerar link".
 export async function buildOfferMessage(
   offer: OfferForMessage,
   settings: Settings,
   requestHeaders?: Headers,
 ): Promise<BuiltMessage> {
+  const usePresell = settings.whatsappUsePresell;
+
   const [phrase, templateBody, link] = await Promise.all([
     pickPhrase(),
     pickTemplate(),
-    createLink({ productId: offer.productId }),
+    createLink({
+      productId: offer.productId,
+      kind: usePresell ? LinkKind.PRESELL : LinkKind.TRACKED,
+      presellId: usePresell ? settings.whatsappPresellId || null : null,
+    }),
   ]);
 
-  const url = publicUrl(`/r/${link.slug}`, settings, requestHeaders);
+  const url = publicUrl(usePresell ? `/p/${link.slug}` : `/r/${link.slug}`, settings, requestHeaders);
 
   const text = renderTemplate(templateBody, {
     titulo: offer.product.title,

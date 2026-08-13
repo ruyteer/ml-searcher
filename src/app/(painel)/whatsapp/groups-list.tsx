@@ -1,15 +1,19 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { IconGrupos, IconAtualizar, IconCarregando } from "@/components/icons";
+import { IconGrupos, IconAtualizar, IconCarregando, IconBuscar } from "@/components/icons";
 import { Section } from "@/components/shell/section";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Pagination } from "@/components/produto/pagination";
 import type { WhatsappGroupRow } from "@/lib/data/whatsapp";
 import { syncGroupsAction, toggleGroupAction } from "./actions";
+
+const PAGE_SIZE = 8;
 
 export interface GroupsListProps {
   instanceId: string | null;
@@ -49,6 +53,8 @@ function GroupRow({ group }: { group: WhatsappGroupRow }) {
 export function GroupsList({ instanceId, connected, groups }: GroupsListProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
 
   function handleSync() {
     if (!instanceId) return;
@@ -61,6 +67,24 @@ export function GroupsList({ instanceId, connected, groups }: GroupsListProps) {
         toast.error(res.message);
       }
     });
+  }
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return groups;
+    return groups.filter((g) => g.name.toLowerCase().includes(q) || g.remoteJid.includes(q));
+  }, [groups, query]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  // Trocar a busca ou o grupo sumir (desabilitou/sincronizou de novo) pode
+  // deixar a página atual além do fim — sem isso a lista renderiza vazia
+  // mesmo tendo resultado.
+  const safePage = Math.min(page, pageCount);
+  const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  function handleQueryChange(next: string) {
+    setQuery(next);
+    setPage(1);
   }
 
   return (
@@ -90,10 +114,36 @@ export function GroupsList({ instanceId, connected, groups }: GroupsListProps) {
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
-          {groups.map((group) => (
-            <GroupRow key={group.id} group={group} />
-          ))}
+        <div className="flex flex-col gap-3">
+          {groups.length > PAGE_SIZE && (
+            <div className="relative">
+              <HugeiconsIcon
+                icon={IconBuscar}
+                size={15}
+                strokeWidth={1.8}
+                className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                value={query}
+                onChange={(e) => handleQueryChange(e.target.value)}
+                placeholder="Buscar grupo pelo nome..."
+                className="pl-8"
+              />
+            </div>
+          )}
+
+          {pageItems.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Nenhum grupo bate com &quot;{query}&quot;.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {pageItems.map((group) => (
+                <GroupRow key={group.id} group={group} />
+              ))}
+            </div>
+          )}
+
+          <Pagination page={safePage} pageCount={pageCount} total={filtered.length} onPageChange={setPage} />
         </div>
       )}
     </Section>

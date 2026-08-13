@@ -4,7 +4,7 @@ import { getSettings } from "../settings";
 import { TAGS, expire } from "../cache";
 import { OfferStatus } from "@/generated/prisma";
 import { runScrape, startScrapeRun, ScrapeAlreadyRunningError } from "../scraper/run";
-import { sendText, UazapiError } from "./uazapi";
+import { sendText, sendMedia, UazapiError } from "./uazapi";
 import { buildOfferMessage } from "./message";
 
 /// Não dispara uma nova varredura por esgotamento se a última começou há
@@ -29,7 +29,7 @@ async function findEligibleOffers(take: number) {
     },
     orderBy: [{ score: "desc" }, { detectedAt: "asc" }],
     take,
-    include: { product: { select: { title: true } } },
+    include: { product: { select: { title: true, thumbnail: true } } },
   });
 }
 
@@ -119,11 +119,23 @@ export async function runWhatsappCycle(requestHeaders?: Headers): Promise<Whatsa
     let anySuccess = false;
     for (const group of instance.groups) {
       try {
-        await sendText(instance.host, instance.token, {
-          number: group.remoteJid,
-          text: built.text,
-          linkPreview: true,
-        });
+        // Com foto do produto fica muito melhor a visualização no grupo — a
+        // legenda leva o mesmo texto que iria no envio só-texto. Sem
+        // thumbnail (raro), cai pro texto com preview de link normal.
+        if (offer.product.thumbnail) {
+          await sendMedia(instance.host, instance.token, {
+            number: group.remoteJid,
+            media: offer.product.thumbnail,
+            type: "image",
+            caption: built.text,
+          });
+        } else {
+          await sendText(instance.host, instance.token, {
+            number: group.remoteJid,
+            text: built.text,
+            linkPreview: true,
+          });
+        }
         await prisma.sendLog.create({
           data: {
             instanceId: instance.id,

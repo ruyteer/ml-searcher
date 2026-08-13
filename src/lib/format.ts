@@ -32,5 +32,8 @@ export function formatDateTime(d: Date | string): string {
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
+    // O servidor roda no fuso do datacenter (Railway), não no do usuário —
+    // sem isso os horários exibidos no painel saem errados.
+    timeZone: "America/Sao_Paulo",
   }).format(new Date(d));
 }

@@ -38,7 +38,7 @@ async function WhatsappContent() {
 
       <GroupsList instanceId={overview.instance?.id ?? null} connected={connected} groups={overview.groups} />
 
-      <ScheduleForm schedule={overview.schedule} />
+      <ScheduleForm schedule={overview.schedule} presells={overview.presells} />
 
       <SendLogTable rows={overview.recentSends} />
     </div>

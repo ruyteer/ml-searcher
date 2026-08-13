@@ -58,6 +58,11 @@ export const SETTINGS_SCHEMA = {
   /// Quantidade de ofertas por ciclo: sorteada entre min e max.
   whatsappMinPerCycle: { default: 1, kind: "number" },
   whatsappMaxPerCycle: { default: 2, kind: "number" },
+  /// Link das mensagens automáticas com página de pre-sell em vez de direto.
+  whatsappUsePresell: { default: false, kind: "boolean" },
+  /// Modelo escolhido. Vazio (com whatsappUsePresell ativo) = usa o modelo
+  /// marcado como padrão em /presells, igual ao resto do sistema.
+  whatsappPresellId: { default: "", kind: "string" },
 } as const;
 
 export type SettingKey = keyof typeof SETTINGS_SCHEMA;
