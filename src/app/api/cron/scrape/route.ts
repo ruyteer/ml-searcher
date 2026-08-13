@@ -1,39 +1,18 @@
 import { NextResponse } from "next/server";
 import { runScrape, ScrapeAlreadyRunningError } from "@/lib/scraper/run";
 import { expire, TAGS } from "@/lib/cache";
+import { cronSecretConfigured, isAuthorizedCron } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-/// Comparação em tempo constante — mesmo padrão de src/lib/auth.ts.
-function timingSafeEqual(a: string, b: string): boolean {
-  const bufA = new TextEncoder().encode(a);
-  const bufB = new TextEncoder().encode(b);
-  if (bufA.length !== bufB.length) return false;
-  let diff = 0;
-  for (let i = 0; i < bufA.length; i++) diff |= bufA[i] ^ bufB[i];
-  return diff === 0;
-}
-
-function isAuthorized(request: Request, secret: string): boolean {
-  const authHeader = request.headers.get("authorization") ?? "";
-  const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-  if (bearer && timingSafeEqual(bearer, secret)) return true;
-
-  const altHeader = request.headers.get("x-cron-secret") ?? "";
-  if (altHeader && timingSafeEqual(altHeader, secret)) return true;
-
-  return false;
-}
-
 async function handle(request: Request): Promise<Response> {
-  const secret = process.env.CRON_SECRET;
   // Sem CRON_SECRET configurado a rota nunca fica aberta: 503 em vez de
   // aceitar chamadas sem autenticação.
-  if (!secret) {
+  if (!cronSecretConfigured()) {
     return NextResponse.json({ error: "CRON_SECRET não configurado" }, { status: 503 });
   }
-  if (!isAuthorized(request, secret)) {
+  if (!isAuthorizedCron(request)) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 

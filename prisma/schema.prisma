@@ -146,10 +146,15 @@ model Offer {
 
   detectedAt    DateTime    @default(now())
   publishedAt   DateTime?
+  /// Quando o envio automático pro WhatsApp mandou esta oferta. Independente
+  /// de `status`: o envio NUNCA marca como PUBLISHED, só evita reenviar a
+  /// mesma oferta num ciclo seguinte.
+  whatsappSentAt DateTime?
 
   @@index([status, detectedAt])
   @@index([score])
   @@index([productId, detectedAt])
+  @@index([status, whatsappSentAt])
 }
 
 // ------------------------------------------------------------------- links
@@ -338,6 +343,7 @@ model SendLog {
 
   @@index([status, scheduledFor])
   @@index([createdAt])
+  @@index([status, sentAt])
 }
 
 // ------------------------------------------------------------ execução/cfg
