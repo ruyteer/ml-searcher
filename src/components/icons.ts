@@ -214,3 +214,5 @@ export const IconTrofeu: AppIcon = Award01Icon;
 export const IconVarredura: AppIcon = ScanIcon;
 /** Pessoas (cliques únicos, usuários). */
 export const IconUsuarios: AppIcon = UserGroupIcon;
+/** Grupos de WhatsApp que recebem as ofertas. */
+export const IconGrupos: AppIcon = UserGroupIcon;

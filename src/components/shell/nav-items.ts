@@ -63,7 +63,6 @@ export const NAV_ITEMS: NavItem[] = [
     label: "WhatsApp",
     icon: IconWhatsapp,
     iconAlt: IconWhatsappAlt,
-    comingSoon: true,
   },
   {
     href: "/configuracoes",

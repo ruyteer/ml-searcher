@@ -47,6 +47,17 @@ export const SETTINGS_SCHEMA = {
 
   /// Uazapi (fase 6).
   uazapiHost: { default: "", kind: "string" },
+  /// Token de administrador da Uazapi — cria/lista instâncias. Diferente do
+  /// token de cada WhatsappInstance, que autentica só aquela instância.
+  uazapiAdminToken: { default: "", kind: "string" },
+
+  /// Envio automático pro WhatsApp (fase 6).
+  whatsappEnabled: { default: false, kind: "boolean" },
+  /// A cada quantos minutos o ciclo de envio roda.
+  whatsappIntervalMinutes: { default: 60, kind: "number" },
+  /// Quantidade de ofertas por ciclo: sorteada entre min e max.
+  whatsappMinPerCycle: { default: 1, kind: "number" },
+  whatsappMaxPerCycle: { default: 2, kind: "number" },
 } as const;
 
 export type SettingKey = keyof typeof SETTINGS_SCHEMA;
@@ -93,6 +104,7 @@ function envFallback(key: SettingKey): string | number | boolean | undefined {
     mlClientSecret: process.env.ML_CLIENT_SECRET,
     publicBaseUrl: process.env.PUBLIC_BASE_URL,
     uazapiHost: process.env.UAZAPI_HOST,
+    uazapiAdminToken: process.env.UAZAPI_ADMIN_TOKEN,
   };
   const raw = map[key];
   if (!raw) return undefined;
