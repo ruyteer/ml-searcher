@@ -83,7 +83,7 @@ export async function buildOfferMessage(
     titulo: offer.product.title,
     preco: formatBRL(offer.price),
     precoAntigo: formatBRL(offer.referencePrice),
-    desconto: `${offer.discountPct}%`,
+    desconto: `${offer.discountPct}`,
     link: url,
     frase: phrase,
   }).trim();
