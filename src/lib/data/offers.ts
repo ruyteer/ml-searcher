@@ -130,15 +130,11 @@ function whereFromFilters(
   // Oferta de produto escondido pelo filtro de palavras não aparece nem conta.
   // A decisão já está materializada em Product.hiddenByWords, então isto é um
   // booleano indexado, não uma busca por texto. Mesma lógica para
-  // affiliateEligible: só tira o que já foi CONFIRMADO como rejeitado (false);
-  // pendente (null) e elegível (true) continuam aparecendo normalmente. NUNCA
-  // usar `{ not: false }` aqui: em SQL, `coluna <> false` dá NULL (não true)
-  // quando a coluna é NULL, então a linha some da consulta — precisa do OR
-  // explícito com `null` para "pendente" continuar valendo.
-  const product: Prisma.ProductWhereInput = {
-    hiddenByWords: false,
-    OR: [{ affiliateEligible: null }, { affiliateEligible: true }],
-  };
+  // affiliateEligible: exige TRUE (confirmado elegível) — pendente (null) e
+  // rejeitado (false) ficam de fora. Mesmo critério do envio automático pro
+  // WhatsApp (src/lib/whatsapp/send.ts): só mostra/manda o que já foi
+  // verificado no programa de afiliados.
+  const product: Prisma.ProductWhereInput = { hiddenByWords: false, affiliateEligible: true };
   if (filters.watchId) product.watchId = filters.watchId;
   if (filters.search.trim()) {
     product.title = { contains: filters.search.trim(), mode: "insensitive" };
@@ -176,12 +172,7 @@ export async function previewOfertasEscondidas(filter: WordFilter): Promise<Impa
 export async function previewOfertasVisiveis(
   visibility: OfferVisibility,
 ): Promise<ImpactoDaDeteccao> {
-  const parts = {
-    product: {
-      hiddenByWords: false,
-      OR: [{ affiliateEligible: null }, { affiliateEligible: true }],
-    },
-  };
+  const parts = { product: { hiddenByWords: false, affiliateEligible: true } };
 
   const [total, visiveis, imperdiveis] = await Promise.all([
     prisma.offer.count({ where: ofertasVisiveisWhere(VISIBILIDADE_ABERTA, parts) }),
@@ -308,10 +299,7 @@ export async function getOfferStats(): Promise<OfferStats> {
       startOfDay.setHours(0, 0, 0, 0);
 
       const parts = {
-        product: {
-          hiddenByWords: false,
-          OR: [{ affiliateEligible: null }, { affiliateEligible: true }],
-        } as Prisma.ProductWhereInput,
+        product: { hiddenByWords: false, affiliateEligible: true } as Prisma.ProductWhereInput,
       };
 
       const [newToday, aggregates, totalMonitored] = await Promise.all([
