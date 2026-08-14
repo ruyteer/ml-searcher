@@ -28,6 +28,18 @@ export const SETTINGS_SCHEMA = {
   affiliateTool: { default: "", kind: "string" },
   affiliateWord: { default: "", kind: "string" },
 
+  /// Sessão logada do painel de afiliados do Mercado Livre (colada como curl
+  /// pelo usuário), usada só para checar elegibilidade produto a produto —
+  /// não existe API pública para isso. Nunca reexibida em texto puro no painel.
+  affiliateSessionCookie: { default: "", kind: "string" },
+  affiliateSessionCsrfToken: { default: "", kind: "string" },
+  /// ISO date decodificada do JWT da sessão (nsa_rotok). Vazio = desconhecida.
+  affiliateSessionExpiresAt: { default: "", kind: "string" },
+  /// true quando uma checagem em ciclo detectou a sessão como inválida (ex.:
+  /// 401 do Mercado Livre) — mais confiável que só olhar a data de validade,
+  /// porque cobre revogação antes do prazo. Zera sozinho ao colar um curl novo.
+  affiliateSessionInvalid: { default: false, kind: "boolean" },
+
   /// Credenciais da API do Mercado Livre. Preenchíveis pelo painel ou por env.
   mlClientId: { default: "", kind: "string" },
   mlClientSecret: { default: "", kind: "string" },

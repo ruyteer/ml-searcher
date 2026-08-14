@@ -13,13 +13,31 @@ export interface MlConnectionView {
   fonte: "usuario" | "aplicacao" | "nenhum";
 }
 
+/// Status da sessão do painel de afiliados, na forma que pode cruzar para o
+/// cliente — cookie e csrf token nunca saem do servidor em texto puro.
+export interface AffiliateSessionView {
+  configured: boolean;
+  /// ISO date, ou null quando não configurada ou sem validade conhecida.
+  expiresAt: string | null;
+  /// true quando um ciclo de checagem já detectou a sessão como inválida.
+  invalid: boolean;
+}
+
 /// Forma de Settings segura pra mandar pro client: nunca inclui o secret em
 /// texto puro, só se ele já está preenchido (pro placeholder mascarado).
 ///
 /// `mlAuth` entra aqui (e não como prop nova do ConfiguracoesTabs) porque o
 /// objeto de settings já é o único canal que a página usa para alimentar
 /// todas as abas.
-export type PublicSettings = Omit<Settings, "mlClientSecret"> & {
+export type PublicSettings = Omit<
+  Settings,
+  | "mlClientSecret"
+  | "affiliateSessionCookie"
+  | "affiliateSessionCsrfToken"
+  | "affiliateSessionExpiresAt"
+  | "affiliateSessionInvalid"
+> & {
   mlHasSecret: boolean;
   mlAuth: MlConnectionView;
+  affiliateSession: AffiliateSessionView;
 };

@@ -75,7 +75,9 @@ async function fetchOverview(): Promise<WhatsappOverview> {
       where: {
         status: OfferStatus.NEW,
         whatsappSentAt: null,
-        product: { blocked: false, hiddenByWords: false },
+        // Mesmo critério de src/lib/whatsapp/send.ts: só conta o que o envio
+        // automático realmente mandaria (afiliado confirmado, não pendente).
+        product: { blocked: false, hiddenByWords: false, affiliateEligible: true },
       },
     }),
     prisma.sendLog.count({ where: { status: "sent", sentAt: { gte: startOfToday() } } }),

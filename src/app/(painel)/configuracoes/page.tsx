@@ -16,12 +16,25 @@ export default async function ConfiguracoesPage() {
 
   // O secret nunca sai do servidor em texto puro — só um booleano indicando
   // se já existe um valor salvo (pro placeholder mascarado no formulário).
-  // Mesma regra para a conexão com o Mercado Livre: só o status atravessa.
-  const { mlClientSecret, ...rest } = settings;
+  // Mesma regra para a conexão com o Mercado Livre e para a sessão de
+  // afiliados: só o status atravessa, nunca o cookie/token em si.
+  const {
+    mlClientSecret,
+    affiliateSessionCookie,
+    affiliateSessionCsrfToken,
+    affiliateSessionExpiresAt,
+    affiliateSessionInvalid,
+    ...rest
+  } = settings;
   const publicSettings: PublicSettings = {
     ...rest,
     mlHasSecret: Boolean(mlClientSecret),
     mlAuth: { ...mlAuth, fonte },
+    affiliateSession: {
+      configured: Boolean(affiliateSessionCookie && affiliateSessionCsrfToken),
+      expiresAt: affiliateSessionExpiresAt || null,
+      invalid: affiliateSessionInvalid,
+    },
   };
 
   const defaults = {

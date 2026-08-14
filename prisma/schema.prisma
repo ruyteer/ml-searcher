@@ -93,6 +93,17 @@ model Product {
   /// tirar a palavra recalcula a coluna e o produto volta a aparecer.
   hiddenByWords Boolean @default(false)
 
+  /// null = ainda não verificado no programa de afiliados; true = elegível;
+  /// false = rejeitado (o Mercado Livre respondeu "URL not allowed"). Uma vez
+  /// false, o produto nunca mais aparece nas ofertas — diferente do
+  /// hiddenByWords, aqui NÃO existe caminho de volta automático, porque a
+  /// elegibilidade é decidida pelo ML, não por uma configuração do usuário.
+  affiliateEligible   Boolean?
+  affiliateCheckedAt  DateTime?
+  /// Mensagem crua devolvida pelo Mercado Livre quando rejeitado, só para
+  /// debug no painel (ex.: "URL not allowed in affiliates program").
+  affiliateCheckError String?
+
   firstSeenAt   DateTime  @default(now())
   lastSeenAt    DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -106,6 +117,7 @@ model Product {
   @@index([blocked])
   @@index([catalogId])
   @@index([hiddenByWords])
+  @@index([affiliateEligible])
 }
 
 /// Um ponto de preço por varredura. É daqui que sai o "mais barato que o normal".

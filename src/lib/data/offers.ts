@@ -129,8 +129,10 @@ function whereFromFilters(
 
   // Oferta de produto escondido pelo filtro de palavras não aparece nem conta.
   // A decisão já está materializada em Product.hiddenByWords, então isto é um
-  // booleano indexado, não uma busca por texto.
-  const product: Prisma.ProductWhereInput = { hiddenByWords: false };
+  // booleano indexado, não uma busca por texto. Mesma lógica para
+  // affiliateEligible: só tira o que já foi CONFIRMADO como rejeitado (false);
+  // pendente (null) e elegível (true) continuam aparecendo normalmente.
+  const product: Prisma.ProductWhereInput = { hiddenByWords: false, affiliateEligible: { not: false } };
   if (filters.watchId) product.watchId = filters.watchId;
   if (filters.search.trim()) {
     product.title = { contains: filters.search.trim(), mode: "insensitive" };
@@ -168,7 +170,7 @@ export async function previewOfertasEscondidas(filter: WordFilter): Promise<Impa
 export async function previewOfertasVisiveis(
   visibility: OfferVisibility,
 ): Promise<ImpactoDaDeteccao> {
-  const parts = { product: { hiddenByWords: false } };
+  const parts = { product: { hiddenByWords: false, affiliateEligible: { not: false } } };
 
   const [total, visiveis, imperdiveis] = await Promise.all([
     prisma.offer.count({ where: ofertasVisiveisWhere(VISIBILIDADE_ABERTA, parts) }),
@@ -294,7 +296,9 @@ export async function getOfferStats(): Promise<OfferStats> {
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
 
-      const parts = { product: { hiddenByWords: false } as Prisma.ProductWhereInput };
+      const parts = {
+        product: { hiddenByWords: false, affiliateEligible: { not: false } } as Prisma.ProductWhereInput,
+      };
 
       const [newToday, aggregates, totalMonitored] = await Promise.all([
         prisma.offer.count({

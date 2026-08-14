@@ -73,6 +73,13 @@ export const affiliateSchema = z.object({
   affiliateWord: z.string().trim().max(100),
 });
 
+/// Curl colado do devtools (aba Network, botão "Copy as cURL") com a sessão
+/// logada do painel de afiliados. O parsing de verdade (extrair cookie e
+/// x-csrf-token) acontece na action — aqui só barra um envio vazio ou absurdo.
+export const affiliateSessionSchema = z.object({
+  curl: z.string().trim().min(1, "Cole o comando curl da sessão.").max(20_000),
+});
+
 // ---------------------------------------------------------------- mercado livre
 
 export const mlSchema = z.object({

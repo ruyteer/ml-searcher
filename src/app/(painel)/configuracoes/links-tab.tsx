@@ -6,12 +6,17 @@ import { IconAlerta, IconLinks } from "@/components/icons";
 import { Section } from "@/components/shell/section";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { UrlInput } from "@/components/form/url-input";
 import { Field } from "./field";
 import { AlertBox } from "./alert-box";
 import { SaveButton } from "./save-button";
 import { useActionToast } from "./use-action-toast";
-import { updateAffiliateSettingsAction, updateDomainSettingsAction } from "./actions";
+import {
+  updateAffiliateSessionAction,
+  updateAffiliateSettingsAction,
+  updateDomainSettingsAction,
+} from "./actions";
 import { INITIAL_ACTION_STATE } from "./action-state";
 import type { PublicSettings } from "./types";
 
@@ -49,19 +54,44 @@ function buildPreview(values: {
   return { trackedUrl, destino };
 }
 
+/// dd/mm/aaaa hh:mm, sem depender de Intl com timezone (o servidor já manda
+/// a data em UTC-3 implícito o bastante pra esta tela informativa).
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function LinksTab({ settings }: LinksTabProps) {
   const [domain, setDomain] = useState(settings.publicBaseUrl);
   const [affiliateEnabled, setAffiliateEnabled] = useState(settings.affiliateEnabled);
   const [affiliateTool, setAffiliateTool] = useState(settings.affiliateTool);
   const [affiliateWord, setAffiliateWord] = useState(settings.affiliateWord);
+  const [sessionCurl, setSessionCurl] = useState("");
 
   const [domainState, domainAction] = useActionState(updateDomainSettingsAction, INITIAL_ACTION_STATE);
   const [affiliateState, affiliateFormAction] = useActionState(
     updateAffiliateSettingsAction,
     INITIAL_ACTION_STATE,
   );
+  const [sessionState, sessionFormAction] = useActionState(
+    updateAffiliateSessionAction,
+    INITIAL_ACTION_STATE,
+  );
   useActionToast(domainState);
   useActionToast(affiliateState);
+  useActionToast(sessionState);
+
+  // Limpa a caixa depois de salvar — o curl colado nunca fica exibido de
+  // volta (mesma regra do secret do Mercado Livre: nunca reexibir segredo).
+  useEffect(() => {
+    if (sessionState.ok && sessionState.ts) setSessionCurl("");
+  }, [sessionState.ts, sessionState.ok]);
+
+  const session = settings.affiliateSession;
+  const now = Date.now();
+  const expired = Boolean(session.expiresAt && new Date(session.expiresAt).getTime() <= now);
+  const sessionProblem = session.invalid || expired;
 
   const domainSavedRef = useRef(domain);
   const affiliateSavedRef = useRef({ affiliateEnabled, affiliateTool, affiliateWord });
@@ -167,6 +197,70 @@ export function LinksTab({ settings }: LinksTabProps) {
           <div className="mt-4 flex items-center gap-3 border-t border-border pt-4">
             <SaveButton />
             {affiliateDirty && <span className="text-xs text-warning">Alterações não salvas</span>}
+          </div>
+        </Section>
+      </form>
+
+      <form action={sessionFormAction}>
+        <Section
+          title="Verificação de elegibilidade"
+          description="Nem todo produto é aceito pelo programa de afiliados do Mercado Livre. Com uma sessão logada aqui, o sistema confere aos poucos as ofertas encontradas e tira da lista as que forem rejeitadas — automaticamente, sem gastar chamada demais nem parecer robô."
+        >
+          <div className="flex flex-col gap-4">
+            {session.configured && (
+              <AlertBox
+                icon={IconAlerta}
+                variant={sessionProblem ? "danger" : "success"}
+                title={sessionProblem ? "Sessão expirada" : "Sessão ativa"}
+              >
+                {sessionProblem ? (
+                  <p>Cole um curl novo abaixo — enquanto isso, a verificação fica pausada.</p>
+                ) : session.expiresAt ? (
+                  <p>Válida até {formatDateTime(session.expiresAt)}.</p>
+                ) : (
+                  <p>Sem data de validade conhecida. Se a verificação parar de funcionar, cole um curl novo.</p>
+                )}
+              </AlertBox>
+            )}
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="curl">Curl da sessão</Label>
+              <Textarea
+                id="curl"
+                name="curl"
+                placeholder="Cole aqui o curl copiado do devtools (Network > createLink > Copy as cURL)"
+                value={sessionCurl}
+                onChange={(e) => setSessionCurl(e.target.value)}
+                className="min-h-28 font-mono text-xs"
+                aria-invalid={Boolean(sessionState.errors?.curl?.[0])}
+              />
+              {sessionState.errors?.curl?.[0] && (
+                <p className="text-xs text-danger" role="alert">
+                  {sessionState.errors.curl[0]}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                No painel de afiliados do Mercado Livre (mercadolivre.com.br/afiliados/hub), abra o
+                devtools, gere um link de teste, encontre a chamada <code>createLink</code> na aba Network e
+                clique em Copy → <strong>Copy as cURL (bash)</strong> — não a variante cmd/PowerShell, o
+                formato é diferente e não é reconhecido aqui. O sistema extrai o cookie e o token sozinho;
+                nada disso fica visível de volta nesta caixa depois de salvar.
+              </p>
+            </div>
+
+            <AlertBox icon={IconAlerta} variant="warning" title="Isso é a sua sessão pessoal, não uma chave de API">
+              <p>
+                Diferente do App ID/Secret do Mercado Livre, esse cookie dá acesso de navegação à sua conta
+                real (o mesmo que abrir o site já logado) — não dá pra revogar só o acesso do sistema, só
+                deslogando a sessão ou trocando a senha na sua conta do ML. Fica guardado sem criptografia
+                no banco, junto com as outras credenciais do painel: qualquer coisa com acesso de leitura ao
+                banco consegue ler esse valor.
+              </p>
+            </AlertBox>
+          </div>
+
+          <div className="mt-4 flex items-center gap-3 border-t border-border pt-4">
+            <SaveButton />
           </div>
         </Section>
       </form>

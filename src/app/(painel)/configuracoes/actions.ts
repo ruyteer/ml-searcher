@@ -28,11 +28,13 @@ import {
 import { previewOfertasEscondidas, previewOfertasVisiveis } from "@/lib/data/offers";
 import { formatWordList, parseWordList } from "@/lib/word-filter";
 import { normalizeVisibility } from "@/lib/offer-visibility";
+import { parseAffiliateCurl } from "@/lib/ml/affiliate-eligibility";
 import {
   detectionPreviewSchema,
   detectionSchema,
   domainSchema,
   affiliateSchema,
+  affiliateSessionSchema,
   mlSchema,
   watchSchema,
   wordFilterSchema,
@@ -209,6 +211,38 @@ export async function updateAffiliateSettingsAction(
 
   await setSettings(parsed.data);
   return ok("Configurações de afiliado salvas.");
+}
+
+/// Cola o curl da sessão do painel de afiliados (devtools > Network > Copy as
+/// cURL) e extrai cookie + csrf token — não existe API pública para isso, ver
+/// src/lib/ml/affiliate-eligibility.ts. A validade mostrada no painel vem do
+/// JWT dentro do próprio cookie, decodificada aqui, sem gastar chamada nenhuma.
+export async function updateAffiliateSessionAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const parsed = affiliateSessionSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fail("Verifique os campos destacados.", zodErrors(parsed.error));
+
+  const session = parseAffiliateCurl(parsed.data.curl);
+  if (!session) {
+    return fail(
+      "Não encontrei cookie e x-csrf-token nesse curl. Copie de novo pelo devtools (Network > clique na chamada createLink > Copy as cURL).",
+    );
+  }
+
+  await setSettings({
+    affiliateSessionCookie: session.cookie,
+    affiliateSessionCsrfToken: session.csrfToken,
+    affiliateSessionExpiresAt: session.expiresAt ? session.expiresAt.toISOString() : "",
+    affiliateSessionInvalid: false,
+  });
+
+  if (session.expiresAt) {
+    const dias = Math.round((session.expiresAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+    return ok(`Sessão salva. Válida por aproximadamente ${dias} dia(s), a partir de agora.`);
+  }
+  return ok("Sessão salva. Não consegui calcular a validade — se parar de funcionar, cole um curl novo.");
 }
 
 // ---------------------------------------------------------------- mercado livre

@@ -25,7 +25,10 @@ async function findEligibleOffers(take: number) {
     where: {
       status: OfferStatus.NEW,
       whatsappSentAt: null,
-      product: { blocked: false, hiddenByWords: false },
+      // affiliateEligible precisa ser TRUE (não só "diferente de false"): o
+      // envio automático não pode arriscar mandar um produto ainda pendente
+      // de checagem e descobrir depois que o link não gera comissão.
+      product: { blocked: false, hiddenByWords: false, affiliateEligible: true },
     },
     orderBy: [{ score: "desc" }, { detectedAt: "asc" }],
     take,
