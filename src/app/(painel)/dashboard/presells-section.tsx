@@ -11,7 +11,11 @@ export async function PresellsSection() {
   const presells = await getTopPresells(10);
 
   return (
-    <Section title="Pre-sells com mais views" description="Top 10 por visualizações.">
+    <Section
+      title="Pre-sells com mais views"
+      description="Top 10 por visualizações."
+      contentClassName="max-h-[320px] overflow-y-auto"
+    >
       {presells.length === 0 ? (
         <EmptyState icon={IconDocumento} title="Nenhuma pre-sell criada ainda" className="border-none py-10" />
       ) : (

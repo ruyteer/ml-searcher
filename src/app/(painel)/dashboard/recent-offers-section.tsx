@@ -38,7 +38,7 @@ export async function RecentOffersSection() {
         </Link>
       }
       className="h-full"
-      contentClassName="flex flex-col gap-1"
+      contentClassName="flex flex-col gap-1 max-h-[320px] overflow-y-auto"
     >
       {items.length === 0 ? (
         <EmptyState

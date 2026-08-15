@@ -10,7 +10,11 @@ export async function TopLinksSection({ period }: { period: Period }) {
   const links = await getTopLinks(period);
 
   return (
-    <Section title="Links mais clicados" description="Top 10 no período selecionado.">
+    <Section
+      title="Links mais clicados"
+      description="Top 10 no período selecionado."
+      contentClassName="max-h-[320px] overflow-y-auto"
+    >
       {links.length === 0 ? (
         <EmptyState icon={IconLinks} title="Nenhum clique em link neste período" className="border-none py-10" />
       ) : (

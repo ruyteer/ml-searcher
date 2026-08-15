@@ -12,7 +12,12 @@ export async function TopProductsSection({ period }: { period: Period }) {
   const products = await getTopProducts(period);
 
   return (
-    <Section title="Produtos mais clicados" description="Top 10 no período selecionado." className="h-full">
+    <Section
+      title="Produtos mais clicados"
+      description="Top 10 no período selecionado."
+      className="h-full"
+      contentClassName="max-h-[320px] overflow-y-auto"
+    >
       {products.length === 0 ? (
         <EmptyState
           icon={IconProdutos}
