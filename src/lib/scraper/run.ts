@@ -1,7 +1,7 @@
 /// Orquestração da varredura: percorre as watches habilitadas, persiste
 /// produtos e histórico de preço e cria as ofertas detectadas.
 
-import type { RunStatus, Watch } from "@/generated/prisma";
+import { OfferStatus, type RunStatus, type Watch } from "@/generated/prisma";
 import { prisma } from "../prisma";
 import { getSettings } from "../settings";
 import { collectForWatch, getCollectionMode, isFixtureMode, isMLApiError } from "../ml";
@@ -17,8 +17,6 @@ const UPSERT_CHUNK = 25;
 const TX_OPTIONS = { timeout: 60_000, maxWait: 20_000 } as const;
 /// Janela do histórico usada como referência.
 const HISTORY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
-/// Não recriar a mesma oferta (mesmo produto, mesmo preço) dentro desta janela.
-const OFFER_DEDUPE_MS = 12 * 60 * 60 * 1000;
 /// Teto de linhas guardadas em ScrapeRun.log.
 const MAX_LOG_LINES = 800;
 
@@ -261,32 +259,61 @@ async function processWatch(watch: Watch, ctx: WatchContext): Promise<WatchOutco
     return { itemsSeen: found.length, productsNew, offersNew: 0, offNiche: collected.offNiche };
   }
 
-  // Deduplicação: mesma oferta (produto + preço) nas últimas 12h não repete.
-  const recent = await prisma.offer.findMany({
+  // Um produto já com oferta NEW em aberto não ganha outra linha: o preço da
+  // varredura anterior pode ter mudado 1 centavo (frete, arredondamento) e
+  // isso não é uma nova oferta, é a mesma continuando. Atualiza a existente em
+  // vez de empilhar. Só PUBLISHED/IGNORED (já decididas por alguém) liberam
+  // criar uma oferta nova de novo para o mesmo produto.
+  const openOffers = await prisma.offer.findMany({
     where: {
       productId: { in: candidates.map((c) => c.productId) },
-      detectedAt: { gte: new Date(now.getTime() - OFFER_DEDUPE_MS) },
+      status: OfferStatus.NEW,
     },
-    select: { productId: true, price: true },
+    select: { id: true, productId: true },
+    orderBy: { detectedAt: "desc" },
   });
-  const alreadySeen = new Set(recent.map((row) => `${row.productId}:${row.price}`));
-  const fresh = candidates.filter((c) => !alreadySeen.has(`${c.productId}:${c.price}`));
-  const repeated = candidates.length - fresh.length;
+  const openOfferByProduct = new Map<string, string>();
+  for (const row of openOffers) {
+    if (!openOfferByProduct.has(row.productId)) openOfferByProduct.set(row.productId, row.id);
+  }
 
-  if (fresh.length > 0) {
+  const toUpdate = candidates.filter((c) => openOfferByProduct.has(c.productId));
+  const toCreate = candidates.filter((c) => !openOfferByProduct.has(c.productId));
+
+  if (toUpdate.length > 0) {
+    await prisma.$transaction(
+      toUpdate.map((c) =>
+        prisma.offer.update({
+          where: { id: openOfferByProduct.get(c.productId)! },
+          data: {
+            price: c.price,
+            referencePrice: c.referencePrice,
+            referenceKind: c.referenceKind,
+            discountPct: c.discountPct,
+            score: c.score,
+            runId: ctx.runId,
+            detectedAt: now,
+          },
+        }),
+      ),
+      TX_OPTIONS,
+    );
+  }
+
+  if (toCreate.length > 0) {
     await prisma.offer.createMany({
-      data: fresh.map((c) => ({ ...c, runId: ctx.runId, detectedAt: now })),
+      data: toCreate.map((c) => ({ ...c, runId: ctx.runId, detectedAt: now })),
     });
   }
 
   log.add(
-    `Watch "${watch.label}": ${fresh.length} oferta(s) nova(s)` +
+    `Watch "${watch.label}": ${toCreate.length} oferta(s) nova(s)` +
       (hotCount > 0 ? `, ${hotCount} imperdível(is)` : "") +
-      (repeated > 0 ? `, ${repeated} repetida(s) ignorada(s)` : "") +
+      (toUpdate.length > 0 ? `, ${toUpdate.length} atualizada(s)` : "") +
       ".",
   );
 
-  return { itemsSeen: found.length, productsNew, offersNew: fresh.length, offNiche: collected.offNiche };
+  return { itemsSeen: found.length, productsNew, offersNew: toCreate.length, offNiche: collected.offNiche };
 }
 
 // ------------------------------------------------------------------- runScrape
