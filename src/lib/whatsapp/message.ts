@@ -4,6 +4,7 @@ import { formatBRL } from "../format";
 import { createLink, publicUrl } from "../links";
 import type { Settings } from "../settings";
 import { LinkKind } from "@/generated/prisma";
+import { parseWordList, matchedWords } from "../word-filter";
 
 /// Corpo usado quando não existe nenhum MessageTemplate cadastrado ainda —
 /// a app tem que funcionar sem setup nenhum no painel de frases.
@@ -18,17 +19,34 @@ function renderTemplate(body: string, vars: Record<string, string>): string {
 /// oferta (produto sem watch usa o pool de frases sem nenhum vínculo, `none`)
 /// e soma o uso. Sem fallback cruzado: sem frase pro watchId exato, devolve
 /// string vazia — o template simplesmente fica sem ela.
-async function pickPhrase(watchId: string | null): Promise<string> {
+///
+/// Dentro desse pool por categoria, "específica ganha": frase com keyword só
+/// concorre quando bate no título (ver `pool` abaixo); sem nenhuma batida,
+/// cai pras frases sem keyword nenhuma, que é o comportamento de sempre.
+async function pickPhrase(watchId: string | null, productTitle: string): Promise<string> {
   const phrases = await prisma.phrase.findMany({
     where: {
       active: true,
       watches: watchId ? { some: { watchId } } : { none: {} },
     },
-    select: { id: true, text: true },
+    select: { id: true, text: true, keywords: true },
   });
   if (phrases.length === 0) return "";
 
-  const chosen = phrases[Math.floor(Math.random() * phrases.length)];
+  // "Específica ganha": frase com keyword configurada só concorre quando
+  // uma delas bate no título do produto. Se alguma bateu, o sorteio fica
+  // restrito a essas (senão configurar keyword nunca mudaria nada — ficaria
+  // diluído entre as genéricas); se nenhuma bateu (ou nenhuma frase da
+  // categoria tem keyword), cai pro comportamento de sempre: sorteia entre
+  // as frases sem keyword nenhuma.
+  const especificas = phrases.filter((p) => {
+    const kws = parseWordList(p.keywords);
+    return kws.length > 0 && matchedWords(productTitle, kws).length > 0;
+  });
+  const pool = especificas.length > 0 ? especificas : phrases.filter((p) => parseWordList(p.keywords).length === 0);
+  if (pool.length === 0) return "";
+
+  const chosen = pool[Math.floor(Math.random() * pool.length)];
   await prisma.phrase.update({ where: { id: chosen.id }, data: { usageCount: { increment: 1 } } });
   return chosen.text;
 }
@@ -73,7 +91,7 @@ export async function buildOfferMessage(
   const usePresell = settings.whatsappUsePresell;
 
   const [phrase, templateBody, link] = await Promise.all([
-    pickPhrase(offer.product.watchId),
+    pickPhrase(offer.product.watchId, offer.product.title),
     pickTemplate(),
     createLink({
       productId: offer.productId,

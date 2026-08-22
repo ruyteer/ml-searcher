@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { TAGS, bust } from "@/lib/cache";
 import { Prisma } from "@/generated/prisma";
+import { parseWordList, formatWordList } from "@/lib/word-filter";
 
 import type { ActionState } from "./action-state";
 
@@ -23,19 +24,24 @@ function isForeignKeyError(err: unknown): boolean {
 const phraseInputSchema = z.object({
   text: z.string().trim().min(1, "Digite o texto da frase.").max(500, "Frase muito longa."),
   watchIds: z.array(z.string().trim().min(1)).max(50),
+  keywords: z.string().max(3000, "Lista de palavras-chave muito longa.").default(""),
 });
 
 export async function createPhrase(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = phraseInputSchema.safeParse({
     text: formData.get("text"),
     watchIds: [...new Set(formData.getAll("watchIds").map(String))],
+    keywords: formData.get("keywords") ?? "",
   });
   if (!parsed.success) return { success: false, message: firstIssueMessage(parsed.error) };
+
+  const keywords = formatWordList(parseWordList(parsed.data.keywords));
 
   try {
     await prisma.phrase.create({
       data: {
         text: parsed.data.text,
+        keywords,
         watches: { create: parsed.data.watchIds.map((watchId) => ({ watchId })) },
       },
     });
@@ -54,8 +60,11 @@ export async function updatePhrase(_prev: ActionState, formData: FormData): Prom
   const parsed = phraseInputSchema.safeParse({
     text: formData.get("text"),
     watchIds: [...new Set(formData.getAll("watchIds").map(String))],
+    keywords: formData.get("keywords") ?? "",
   });
   if (!parsed.success) return { success: false, message: firstIssueMessage(parsed.error) };
+
+  const keywords = formatWordList(parseWordList(parsed.data.keywords));
 
   try {
     // Substituição atômica dos vínculos: remove os antigos e cria os novos
@@ -67,6 +76,7 @@ export async function updatePhrase(_prev: ActionState, formData: FormData): Prom
         where: { id },
         data: {
           text: parsed.data.text,
+          keywords,
           watches: { create: parsed.data.watchIds.map((watchId) => ({ watchId })) },
         },
       }),
@@ -98,6 +108,7 @@ export async function duplicatePhrase(id: string): Promise<ActionState> {
       data: {
         text: original.text,
         active: original.active,
+        keywords: original.keywords,
         watches: { create: original.watches.map((w) => ({ watchId: w.watchId })) },
       },
     });
@@ -124,6 +135,7 @@ const MAX_BULK_LINES = 300;
 const bulkPhraseSchema = z.object({
   watchIds: z.array(z.string().trim().min(1)).max(50),
   lines: z.string().min(1, "Cole ao menos uma frase, uma por linha."),
+  keywords: z.string().max(3000, "Lista de palavras-chave muito longa.").default(""),
 });
 
 /// Cada linha não-vazia da textarea vira uma Phrase, todas com o mesmo
@@ -133,6 +145,7 @@ export async function bulkCreatePhrases(_prev: ActionState, formData: FormData):
   const parsed = bulkPhraseSchema.safeParse({
     watchIds: [...new Set(formData.getAll("watchIds").map(String))],
     lines: formData.get("lines"),
+    keywords: formData.get("keywords") ?? "",
   });
   if (!parsed.success) return { success: false, message: firstIssueMessage(parsed.error) };
 
@@ -146,13 +159,15 @@ export async function bulkCreatePhrases(_prev: ActionState, formData: FormData):
     return { success: false, message: "Nenhuma linha válida encontrada." };
   }
 
+  const keywords = formatWordList(parseWordList(parsed.data.keywords));
+
   try {
     // createMany não cria relações aninhadas — precisa de um create por
     // frase para gravar os vínculos de categoria de cada uma.
     await prisma.$transaction(
       texts.map((text) =>
         prisma.phrase.create({
-          data: { text, watches: { create: parsed.data.watchIds.map((watchId) => ({ watchId })) } },
+          data: { text, keywords, watches: { create: parsed.data.watchIds.map((watchId) => ({ watchId })) } },
         })
       )
     );

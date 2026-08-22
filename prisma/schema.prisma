@@ -290,6 +290,13 @@ model Phrase {
   /// pool geral, usado só por produto sem watch.
   watches    PhraseWatch[]
 
+  /// Palavras-chave (texto cru, mesmo formato de Setting.filterExcludeWords —
+  /// ler com parseWordList, gravar com formatWordList). Vazio = frase
+  /// elegível pra qualquer produto da categoria, sem filtro extra. Com
+  /// palavras, a frase só é sorteada quando uma delas aparece no título do
+  /// produto (ver pickPhrase em src/lib/whatsapp/message.ts).
+  keywords   String   @default("")
+
   @@index([active])
 }
 

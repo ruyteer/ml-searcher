@@ -1,12 +1,17 @@
 /// Filtro por palavras configurado pelo usuário nas configurações.
 ///
 /// Módulo PURO de propósito: sem React, sem Prisma, sem "server-only". Ele é
-/// usado em três lugares que precisam concordar entre si:
+/// usado em quatro lugares:
 ///   1. a varredura (src/lib/ml/collect.ts), para descartar cedo;
-///   2. as consultas (src/lib/data/*.ts), que reproduzem a MESMA regra em SQL;
-///   3. a aba de configurações, que roda no navegador para mostrar as fichas.
+///   2. as consultas (src/lib/data/*.ts), que reproduzem a MESMA regra em SQL
+///      — este e o item 1 precisam concordar entre si;
+///   3. a aba de configurações, que roda no navegador para mostrar as fichas;
+///   4. o sorteio de frase do WhatsApp (src/lib/whatsapp/message.ts), que usa
+///      só o casamento em JS (parseWordList/matchedWords) pra filtrar frase
+///      por palavra-chave do produto — não tem ponta SQL, então fica de fora
+///      da exigência de sincronia do item 2.
 ///
-/// Regra combinada com o usuário:
+/// Regra combinada com o usuário (itens 1 e 2, filtro de produto):
 ///   - bateu qualquer palavra da lista de excluir  -> reprova;
 ///   - lista de obrigatórias preenchida            -> precisa bater PELO MENOS
 ///     UMA delas (é uma lista de assuntos de interesse, não uma exigência
