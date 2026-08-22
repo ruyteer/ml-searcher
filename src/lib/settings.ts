@@ -75,6 +75,10 @@ export const SETTINGS_SCHEMA = {
   /// Modelo escolhido. Vazio (com whatsappUsePresell ativo) = usa o modelo
   /// marcado como padrão em /presells, igual ao resto do sistema.
   whatsappPresellId: { default: "", kind: "string" },
+  /// Horário-alvo do próximo ciclo de envio (ISO). Vazio = envia no próximo tick.
+  /// Avança na grade do agendamento, nunca a partir da hora em que o envio
+  /// terminou — senão a duração do envio empurra o alvo para fora do tick.
+  whatsappNextSendAt: { default: "", kind: "string" },
 } as const;
 
 export type SettingKey = keyof typeof SETTINGS_SCHEMA;

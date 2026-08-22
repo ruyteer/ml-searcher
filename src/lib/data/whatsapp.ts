@@ -39,6 +39,8 @@ export interface WhatsappOverview {
     maxPerCycle: number;
     usePresell: boolean;
     presellId: string;
+    nextSendAt: string | null;
+    lastSentAt: string | null;
   };
   /// Pre-sells ativas, pro seletor do agendamento. Vazio = nenhuma cadastrada.
   presells: { id: string; title: string }[];
@@ -70,7 +72,7 @@ async function fetchOverview(): Promise<WhatsappOverview> {
     include: { groups: { orderBy: { name: "asc" } } },
   });
 
-  const [pendingOffers, sentToday, sentTotal, failedRecent, recentSendsRaw, presells] = await Promise.all([
+  const [pendingOffers, sentToday, sentTotal, failedRecent, lastSent, recentSendsRaw, presells] = await Promise.all([
     prisma.offer.count({
       where: {
         status: OfferStatus.NEW,
@@ -84,6 +86,11 @@ async function fetchOverview(): Promise<WhatsappOverview> {
     prisma.sendLog.count({ where: { status: "sent" } }),
     prisma.sendLog.count({
       where: { status: "failed", createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+    }),
+    prisma.sendLog.findFirst({
+      where: { status: "sent" },
+      orderBy: { sentAt: { sort: "desc", nulls: "last" } },
+      select: { sentAt: true },
     }),
     prisma.sendLog.findMany({
       orderBy: { createdAt: "desc" },
@@ -119,6 +126,8 @@ async function fetchOverview(): Promise<WhatsappOverview> {
       maxPerCycle: settings.whatsappMaxPerCycle,
       usePresell: settings.whatsappUsePresell,
       presellId: settings.whatsappPresellId,
+      nextSendAt: settings.whatsappNextSendAt || null,
+      lastSentAt: lastSent?.sentAt?.toISOString() ?? null,
     },
     presells,
     uazapiHost: settings.uazapiHost,

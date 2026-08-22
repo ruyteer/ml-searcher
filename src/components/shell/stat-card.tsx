@@ -11,7 +11,7 @@ export interface StatCardProps {
   /// Variação percentual (ex.: 12.4 ou -3.1). Positivo = verde com seta pra
   /// cima, negativo = vermelho com seta pra baixo.
   delta?: number;
-  deltaLabel?: string;
+  deltaLabel?: React.ReactNode;
   loading?: boolean;
   className?: string;
 }
@@ -64,36 +64,41 @@ export function StatCard({
         >
           {value}
         </span>
-        {typeof delta === "number" && (
-          <div className="flex items-center gap-1.5 text-xs">
-            <span
-              className={cn(
-                "flex items-center gap-0.5 font-medium",
-                isPositive && "text-success",
-                isNegative && "text-danger",
-                !isPositive && !isNegative && "text-muted-foreground"
-              )}
-              data-numeric
-            >
-              {isPositive && (
-                <HugeiconsIcon
-                  icon={IconSubindo}
-                  size={12}
-                  strokeWidth={2.2}
-                  aria-hidden="true"
-                />
-              )}
-              {isNegative && (
-                <HugeiconsIcon
-                  icon={IconDescendo}
-                  size={12}
-                  strokeWidth={2.2}
-                  aria-hidden="true"
-                />
-              )}
-              {Math.abs(delta).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
-            </span>
-            {deltaLabel && <span className="text-muted-foreground">{deltaLabel}</span>}
+        {(typeof delta === "number" || deltaLabel) && (
+          <div className="flex min-w-0 items-center gap-1.5 text-xs">
+            {typeof delta === "number" && (
+              <span
+                className={cn(
+                  "flex shrink-0 items-center gap-0.5 font-medium",
+                  isPositive && "text-success",
+                  isNegative && "text-danger",
+                  !isPositive && !isNegative && "text-muted-foreground"
+                )}
+                data-numeric
+              >
+                {isPositive && (
+                  <HugeiconsIcon
+                    icon={IconSubindo}
+                    size={12}
+                    strokeWidth={2.2}
+                    aria-hidden="true"
+                  />
+                )}
+                {isNegative && (
+                  <HugeiconsIcon
+                    icon={IconDescendo}
+                    size={12}
+                    strokeWidth={2.2}
+                    aria-hidden="true"
+                  />
+                )}
+                {Math.abs(delta).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
+              </span>
+            )}
+            {/* min-w-0 + truncate: card não pode crescer por causa de um label longo */}
+            {deltaLabel && (
+              <span className="min-w-0 truncate text-muted-foreground">{deltaLabel}</span>
+            )}
           </div>
         )}
       </CardContent>

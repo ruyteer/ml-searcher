@@ -19,6 +19,13 @@ async function handle(request: Request): Promise<Response> {
 
   try {
     const result = await runWhatsappCycle(request.headers);
+    if (result.skipped) {
+      console.info("[cron/whatsapp-send]", {
+        code: result.skipped.code,
+        dueInMs: result.schedule.dueInMs,
+        pendingOffers: result.pendingOffers,
+      });
+    }
     return NextResponse.json(result);
   } catch (err) {
     console.error("[cron/whatsapp-send] falha no ciclo de envio:", err);

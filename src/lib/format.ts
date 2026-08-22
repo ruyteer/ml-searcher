@@ -37,3 +37,10 @@ export function formatDateTime(d: Date | string): string {
     timeZone: "America/Sao_Paulo",
   }).format(new Date(d));
 }
+
+export function formatTime(d: Date | string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeStyle: "short",
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date(d));
+}
