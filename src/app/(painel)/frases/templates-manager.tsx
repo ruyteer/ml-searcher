@@ -24,6 +24,7 @@ import { PhrasePicker, type PhrasePickerWatch } from "@/components/mensagem/phra
 import { buildMessageVars, renderTemplate } from "@/lib/message";
 import { cn } from "@/lib/utils";
 import type { MessageTemplate, Phrase } from "@/generated/prisma";
+import type { PhraseWithWatchIds } from "@/lib/data/phrases";
 import {
   createTemplate,
   deleteTemplate,
@@ -35,7 +36,7 @@ import { INITIAL_ACTION_STATE } from "./action-state";
 
 export interface TemplatesManagerProps {
   templates: MessageTemplate[];
-  phrases: Phrase[];
+  phrases: PhraseWithWatchIds[];
   watches: PhrasePickerWatch[];
 }
 
@@ -181,7 +182,7 @@ export function TemplatesManager({ templates, phrases, watches }: TemplatesManag
 
 interface TemplateEditorPanelProps {
   selected: MessageTemplate | null;
-  phrases: Phrase[];
+  phrases: PhraseWithWatchIds[];
   watches: PhrasePickerWatch[];
   totalTemplates: number;
   /// true enquanto duplicar/definir padrão/excluir está em andamento.

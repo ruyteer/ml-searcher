@@ -25,15 +25,16 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import type { Phrase } from "@/generated/prisma";
+import type { PhraseWithWatchIds } from "@/lib/data/phrases";
 import { deletePhrase, duplicatePhrase, setPhraseActive } from "./actions";
 
 export interface PhraseRowProps {
-  phrase: Phrase;
+  phrase: PhraseWithWatchIds;
   onEdit: () => void;
-  /// Rótulo já resolvido do watch da frase ("Sem categoria" quando nulo) —
-  /// o componente pai resolve porque `Phrase` só guarda o `watchId` (cuid).
-  categoryLabel: string;
+  /// Rótulos já resolvidos das categorias da frase (lista vazia = "Sem
+  /// categoria") — o componente pai resolve porque a frase só guarda os
+  /// watchIds (cuid).
+  categoryLabels: string[];
   /// Esconde o selo de categoria quando a lista já está filtrada por uma
   /// categoria só, pra não repetir a mesma informação em toda linha.
   showCategory?: boolean;
@@ -42,7 +43,7 @@ export interface PhraseRowProps {
 /// Linha compacta de uma frase: uma por linha, ações só aparecem no hover ou
 /// foco. Pensado para telas com dezenas ou centenas de frases, onde um card
 /// por item não escala. Clicar no texto já copia a frase.
-export function PhraseRow({ phrase, onEdit, categoryLabel, showCategory = true }: PhraseRowProps) {
+export function PhraseRow({ phrase, onEdit, categoryLabels, showCategory = true }: PhraseRowProps) {
   const [isPending, startTransition] = useTransition();
   // Switch otimista: reflete o novo estado na hora, sem esperar o roundtrip.
   const [active, setActive] = useState(phrase.active);
@@ -107,8 +108,15 @@ export function PhraseRow({ phrase, onEdit, categoryLabel, showCategory = true }
         </span>
       </button>
       {showCategory && (
-        <span className="hidden shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground sm:inline">
-          {categoryLabel}
+        <span
+          className="hidden shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground sm:inline"
+          title={categoryLabels.length > 1 ? categoryLabels.join(", ") : undefined}
+        >
+          {categoryLabels.length === 0
+            ? "Sem categoria"
+            : categoryLabels.length === 1
+              ? categoryLabels[0]
+              : `${categoryLabels[0]} +${categoryLabels.length - 1}`}
         </span>
       )}
       {/* No celular não existe hover: as ações ficam sempre visíveis e podem

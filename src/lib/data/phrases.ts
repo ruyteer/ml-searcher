@@ -7,56 +7,85 @@ import type { Phrase, MessageTemplate } from "@/generated/prisma";
 
 // ------------------------------------------------------------------ phrases
 
+/// Phrase com as categorias vinculadas achatadas em `watchIds` — lista vazia
+/// é o pool geral (nenhum vínculo em PhraseWatch).
+export type PhraseWithWatchIds = Phrase & { watchIds: string[] };
+
 const loadPhrases = unstable_cache(
-  async () => prisma.phrase.findMany({ orderBy: { createdAt: "asc" } }),
+  async () => {
+    const phrases = await prisma.phrase.findMany({
+      orderBy: { createdAt: "asc" },
+      include: { watches: { select: { watchId: true } } },
+    });
+    return phrases.map(({ watches, ...phrase }): PhraseWithWatchIds => ({
+      ...phrase,
+      watchIds: watches.map((w) => w.watchId),
+    }));
+  },
   ["phrases"],
   { tags: [TAGS.phrases] },
 );
 
-export async function getPhrases(): Promise<Phrase[]> {
+export async function getPhrases(): Promise<PhraseWithWatchIds[]> {
   return loadPhrases();
 }
 
-export interface PhraseGroup {
+export interface PhraseGroupSummary {
   watchId: string | null;
   label: string;
-  phrases: Phrase[];
+  /// Quantas frases (ativas+inativas) pertencem a este grupo — uma frase com
+  /// várias categorias conta em cada uma. É o contador do filtro lateral, não
+  /// o total geral de frases.
+  count: number;
 }
 
-/// Frases agrupadas por watch, na ordem exibida pela aba "Frases": segue a
-/// ordem de árvore de `listWatchTree()`, com o grupo "Sem categoria"
-/// (watchId nulo) sempre por último. Só entram grupos com pelo menos 1 frase.
-const loadPhrasesGroupedByWatch = unstable_cache(
+export interface PhrasesView {
+  phrases: PhraseWithWatchIds[];
+  groups: PhraseGroupSummary[];
+}
+
+/// Lista plana de frases (fonte de verdade, sem duplicar linha por
+/// categoria) + resumo de grupos por watch pro filtro lateral da aba
+/// "Frases". Segue a ordem de árvore de `listWatchTree()`, com o grupo "Sem
+/// categoria" sempre por último. Só entram grupos com pelo menos 1 frase.
+const loadPhrasesView = unstable_cache(
   async () => {
     const [phrases, watches] = await Promise.all([
-      prisma.phrase.findMany({ orderBy: { createdAt: "asc" } }),
+      prisma.phrase.findMany({
+        orderBy: { createdAt: "asc" },
+        include: { watches: { select: { watchId: true } } },
+      }),
       listWatchTree(),
     ]);
 
-    const byWatch = new Map<string | null, Phrase[]>();
-    for (const phrase of phrases) {
-      const list = byWatch.get(phrase.watchId) ?? [];
-      list.push(phrase);
-      byWatch.set(phrase.watchId, list);
+    const flat: PhraseWithWatchIds[] = phrases.map(({ watches, ...phrase }) => ({
+      ...phrase,
+      watchIds: watches.map((w) => w.watchId),
+    }));
+
+    const counts = new Map<string | null, number>();
+    for (const phrase of flat) {
+      const keys = phrase.watchIds.length > 0 ? phrase.watchIds : [null];
+      for (const key of keys) counts.set(key, (counts.get(key) ?? 0) + 1);
     }
 
-    const groups: PhraseGroup[] = [];
+    const groups: PhraseGroupSummary[] = [];
     for (const watch of watches) {
-      const list = byWatch.get(watch.id);
-      if (list) groups.push({ watchId: watch.id, label: watch.label, phrases: list });
+      const count = counts.get(watch.id) ?? 0;
+      if (count > 0) groups.push({ watchId: watch.id, label: watch.label, count });
     }
 
-    const semCategoria = byWatch.get(null);
-    if (semCategoria) groups.push({ watchId: null, label: "Sem categoria", phrases: semCategoria });
+    const semCategoria = counts.get(null) ?? 0;
+    if (semCategoria > 0) groups.push({ watchId: null, label: "Sem categoria", count: semCategoria });
 
-    return groups;
+    return { phrases: flat, groups };
   },
-  ["phrases-grouped-by-watch"],
+  ["phrases-view"],
   { tags: [TAGS.phrases, TAGS.watches] },
 );
 
-export async function getPhrasesGroupedByWatch(): Promise<PhraseGroup[]> {
-  return loadPhrasesGroupedByWatch();
+export async function getPhrasesWithGroups(): Promise<PhrasesView> {
+  return loadPhrasesView();
 }
 
 /// Opções de watch pro seletor de categoria da aba Frases — repasse de

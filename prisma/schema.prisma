@@ -42,7 +42,7 @@ model Watch {
   auto       Boolean   @default(false)
 
   products   Product[]
-  phrases    Phrase[]
+  phrases    PhraseWatch[]
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
@@ -286,12 +286,25 @@ model Phrase {
   active     Boolean  @default(true)
   createdAt  DateTime @default(now())
 
-  /// Categoria monitorada (Watch) à qual a frase pertence. Nula = pool
-  /// geral, usável por qualquer categoria.
-  watchId    String?
-  watch      Watch?   @relation(fields: [watchId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  /// Categorias monitoradas (Watch) às quais a frase pertence. Lista vazia =
+  /// pool geral, usado só por produto sem watch.
+  watches    PhraseWatch[]
 
-  @@index([watchId, active])
+  @@index([active])
+}
+
+/// Vínculo N:N entre frase e categoria monitorada. Apagar qualquer um dos
+/// lados só remove o vínculo — a frase sobrevive e, se ficar sem nenhum
+/// vínculo, volta pro pool geral (mesma semântica que watchId = null tinha
+/// antes desta tabela existir).
+model PhraseWatch {
+  phraseId String
+  watchId  String
+  phrase   Phrase @relation(fields: [phraseId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  watch    Watch  @relation(fields: [watchId],  references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([phraseId, watchId])
+  @@index([watchId])
 }
 
 model MessageTemplate {

@@ -175,7 +175,6 @@ async function main() {
       create: {
         id,
         text: phrase.text,
-        watchId: null,
         active: true,
       },
     });

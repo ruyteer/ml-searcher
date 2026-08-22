@@ -12,31 +12,33 @@ function firstIssueMessage(error: z.ZodError): string {
 }
 
 /// FK inválida — watchId aponta pra um Watch que não existe (ou foi apagado
-/// entre o form carregar e o submit).
+/// entre o form carregar e o submit). P2025 cobre o mesmo caso quando o
+/// erro vem de um nested create/connect em vez de uma FK direta.
 function isForeignKeyError(err: unknown): boolean {
-  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003";
+  return err instanceof Prisma.PrismaClientKnownRequestError && (err.code === "P2003" || err.code === "P2025");
 }
 
 // ------------------------------------------------------------------ phrases
 
 const phraseInputSchema = z.object({
   text: z.string().trim().min(1, "Digite o texto da frase.").max(500, "Frase muito longa."),
-  watchId: z
-    .string()
-    .trim()
-    .transform((v) => (v === "" ? null : v))
-    .nullable(),
+  watchIds: z.array(z.string().trim().min(1)).max(50),
 });
 
 export async function createPhrase(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = phraseInputSchema.safeParse({
     text: formData.get("text"),
-    watchId: formData.get("watchId"),
+    watchIds: [...new Set(formData.getAll("watchIds").map(String))],
   });
   if (!parsed.success) return { success: false, message: firstIssueMessage(parsed.error) };
 
   try {
-    await prisma.phrase.create({ data: parsed.data });
+    await prisma.phrase.create({
+      data: {
+        text: parsed.data.text,
+        watches: { create: parsed.data.watchIds.map((watchId) => ({ watchId })) },
+      },
+    });
   } catch (err) {
     if (isForeignKeyError(err)) return { success: false, message: "Categoria não encontrada." };
     throw err;
@@ -51,12 +53,24 @@ export async function updatePhrase(_prev: ActionState, formData: FormData): Prom
 
   const parsed = phraseInputSchema.safeParse({
     text: formData.get("text"),
-    watchId: formData.get("watchId"),
+    watchIds: [...new Set(formData.getAll("watchIds").map(String))],
   });
   if (!parsed.success) return { success: false, message: firstIssueMessage(parsed.error) };
 
   try {
-    await prisma.phrase.update({ where: { id }, data: parsed.data });
+    // Substituição atômica dos vínculos: remove os antigos e cria os novos
+    // na mesma transação, pra nunca deixar a frase sem vínculo nenhum caso
+    // a criação falhe no meio.
+    await prisma.$transaction([
+      prisma.phraseWatch.deleteMany({ where: { phraseId: id } }),
+      prisma.phrase.update({
+        where: { id },
+        data: {
+          text: parsed.data.text,
+          watches: { create: parsed.data.watchIds.map((watchId) => ({ watchId })) },
+        },
+      }),
+    ]);
   } catch (err) {
     if (isForeignKeyError(err)) return { success: false, message: "Categoria não encontrada." };
     throw err;
@@ -76,12 +90,21 @@ export async function deletePhrase(id: string): Promise<ActionState> {
 }
 
 export async function duplicatePhrase(id: string): Promise<ActionState> {
-  const original = await prisma.phrase.findUnique({ where: { id } });
+  const original = await prisma.phrase.findUnique({ where: { id }, include: { watches: true } });
   if (!original) return { success: false, message: "Frase não encontrada." };
 
-  await prisma.phrase.create({
-    data: { text: original.text, watchId: original.watchId, active: original.active },
-  });
+  try {
+    await prisma.phrase.create({
+      data: {
+        text: original.text,
+        active: original.active,
+        watches: { create: original.watches.map((w) => ({ watchId: w.watchId })) },
+      },
+    });
+  } catch (err) {
+    if (isForeignKeyError(err)) return { success: false, message: "Categoria não encontrada." };
+    throw err;
+  }
   bust(TAGS.phrases);
   return { success: true, message: "Frase duplicada." };
 }
@@ -99,19 +122,16 @@ export async function setPhraseActive(id: string, active: boolean): Promise<Acti
 const MAX_BULK_LINES = 300;
 
 const bulkPhraseSchema = z.object({
-  watchId: z
-    .string()
-    .trim()
-    .transform((v) => (v === "" ? null : v))
-    .nullable(),
+  watchIds: z.array(z.string().trim().min(1)).max(50),
   lines: z.string().min(1, "Cole ao menos uma frase, uma por linha."),
 });
 
-/// Cada linha não-vazia da textarea vira uma Phrase da categoria escolhida —
-/// pensado para colar uma lista pronta de uma vez.
+/// Cada linha não-vazia da textarea vira uma Phrase, todas com o mesmo
+/// conjunto de categorias escolhido no form — pensado para colar uma lista
+/// pronta de uma vez.
 export async function bulkCreatePhrases(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = bulkPhraseSchema.safeParse({
-    watchId: formData.get("watchId"),
+    watchIds: [...new Set(formData.getAll("watchIds").map(String))],
     lines: formData.get("lines"),
   });
   if (!parsed.success) return { success: false, message: firstIssueMessage(parsed.error) };
@@ -127,9 +147,15 @@ export async function bulkCreatePhrases(_prev: ActionState, formData: FormData):
   }
 
   try {
-    await prisma.phrase.createMany({
-      data: texts.map((text) => ({ text, watchId: parsed.data.watchId })),
-    });
+    // createMany não cria relações aninhadas — precisa de um create por
+    // frase para gravar os vínculos de categoria de cada uma.
+    await prisma.$transaction(
+      texts.map((text) =>
+        prisma.phrase.create({
+          data: { text, watches: { create: parsed.data.watchIds.map((watchId) => ({ watchId })) } },
+        })
+      )
+    );
   } catch (err) {
     if (isForeignKeyError(err)) return { success: false, message: "Categoria não encontrada." };
     throw err;

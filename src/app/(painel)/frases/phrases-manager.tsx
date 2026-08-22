@@ -12,16 +12,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { SORT_LABELS, type PhraseSortBy } from "@/lib/frases-labels";
 import { IconAlerta } from "@/components/icons";
-import type { PhraseGroup } from "@/lib/data/phrases";
+import type { PhraseGroupSummary, PhraseWithWatchIds } from "@/lib/data/phrases";
 import { PhraseRow } from "./phrase-row";
 import { PhraseDialog } from "./phrase-dialog";
 import { BulkAddDialog } from "./bulk-add-dialog";
 import { AlertBox } from "./alert-box";
 import type { WatchComboboxOption } from "./watch-combobox";
-import type { Phrase } from "@/generated/prisma";
 
 export interface PhrasesManagerProps {
-  groups: PhraseGroup[];
+  phrases: PhraseWithWatchIds[];
+  groups: PhraseGroupSummary[];
   watches: WatchComboboxOption[];
 }
 
@@ -40,24 +40,24 @@ interface CategoryFilterItem {
 /// Lista de frases pensada pra escalar a dezenas ou centenas de itens: uma
 /// linha por frase (não um card), categoria como filtro lateral em vez de
 /// uma seção por categoria, e grade de várias colunas em telas largas.
-export function PhrasesManager({ groups, watches }: PhrasesManagerProps) {
+export function PhrasesManager({ phrases, groups, watches }: PhrasesManagerProps) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<PhraseSortBy>("recent");
   const [category, setCategory] = useQueryState("categoria", { defaultValue: "" });
   const [createOpen, setCreateOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
-  const [editing, setEditing] = useState<Phrase | null>(null);
+  const [editing, setEditing] = useState<PhraseWithWatchIds | null>(null);
 
-  const allPhrases = useMemo(() => groups.flatMap((g) => g.phrases), [groups]);
+  const allPhrases = phrases;
   const totalPhrases = allPhrases.length;
 
-  // Rótulo do grupo de cada frase, pra badge de categoria da linha — Phrase
-  // só guarda o watchId (cuid), quem resolve o texto pro usuário é aqui.
+  // Rótulo de cada categoria, pra badge da linha — Phrase só guarda os
+  // watchIds (cuid), quem resolve o texto pro usuário é aqui.
   const labelByWatchId = useMemo(() => {
-    const map = new Map<string | null, string>();
-    for (const g of groups) map.set(g.watchId, g.label);
+    const map = new Map<string, string>();
+    for (const w of watches) map.set(w.id, w.label);
     return map;
-  }, [groups]);
+  }, [watches]);
 
   // Frases que batem com a busca, sem considerar a categoria selecionada
   // ainda: alimenta o contador por categoria na barra lateral.
@@ -67,10 +67,13 @@ export function PhrasesManager({ groups, watches }: PhrasesManagerProps) {
   }, [allPhrases, search]);
 
   const categoryFilters: CategoryFilterItem[] = useMemo(() => {
+    // groups só dá a lista/ordem das categorias existentes — os números vêm
+    // recalculados aqui em cima de matchingSearch (busca já filtrada), já
+    // que o count do servidor é sobre TODAS as frases.
     const counts = new Map<string, number>();
     for (const p of matchingSearch) {
-      const key = p.watchId ?? NONE_VALUE;
-      counts.set(key, (counts.get(key) ?? 0) + 1);
+      const keys = p.watchIds.length > 0 ? p.watchIds : [NONE_VALUE];
+      for (const key of keys) counts.set(key, (counts.get(key) ?? 0) + 1);
     }
     const items = groups.map((g) => {
       const key = g.watchId ?? NONE_VALUE;
@@ -84,8 +87,10 @@ export function PhrasesManager({ groups, watches }: PhrasesManagerProps) {
   const visiblePhrases = useMemo(() => {
     let list = matchingSearch;
     if (activeCategory) {
-      const targetWatchId = activeCategory === NONE_VALUE ? null : activeCategory;
-      list = list.filter((p) => p.watchId === targetWatchId);
+      list =
+        activeCategory === NONE_VALUE
+          ? list.filter((p) => p.watchIds.length === 0)
+          : list.filter((p) => p.watchIds.includes(activeCategory));
     }
     if (sortBy === "usage") list = [...list].sort((a, b) => b.usageCount - a.usageCount);
     return list;
@@ -96,7 +101,7 @@ export function PhrasesManager({ groups, watches }: PhrasesManagerProps) {
   // pilha concentra a maioria das frases e já existem categorias cadastradas,
   // o usuário provavelmente não sabe que precisa recategorizar na mão — sem
   // isso, ofertas de categorias com Watch saem sem frase no WhatsApp.
-  const semCategoriaCount = groups.find((g) => g.watchId === null)?.phrases.length ?? 0;
+  const semCategoriaCount = phrases.filter((p) => p.watchIds.length === 0).length;
   const showMigrationWarning = watches.length > 0 && totalPhrases > 0 && semCategoriaCount / totalPhrases > 0.5;
 
   return (
@@ -222,7 +227,7 @@ export function PhrasesManager({ groups, watches }: PhrasesManagerProps) {
                   key={phrase.id}
                   phrase={phrase}
                   onEdit={() => setEditing(phrase)}
-                  categoryLabel={labelByWatchId.get(phrase.watchId) ?? "Sem categoria"}
+                  categoryLabels={phrase.watchIds.map((id) => labelByWatchId.get(id) ?? id)}
                   showCategory={!activeCategory}
                 />
               ))}

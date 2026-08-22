@@ -16,20 +16,20 @@ import { Label } from "@/components/ui/label";
 import { WatchCombobox, type WatchComboboxOption } from "./watch-combobox";
 import { createPhrase, updatePhrase } from "./actions";
 import { INITIAL_ACTION_STATE } from "./action-state";
-import type { Phrase } from "@/generated/prisma";
+import type { PhraseWithWatchIds } from "@/lib/data/phrases";
 
 export interface PhraseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /// null = criar nova frase; presente = editar esta frase.
-  phrase: Phrase | null;
+  phrase: PhraseWithWatchIds | null;
   watches: WatchComboboxOption[];
 }
 
 export function PhraseDialog({ open, onOpenChange, phrase, watches }: PhraseDialogProps) {
   const action = phrase ? updatePhrase : createPhrase;
   const [state, formAction, isPending] = useActionState(action, INITIAL_ACTION_STATE);
-  const [watchId, setWatchId] = useState<string | null>(phrase?.watchId ?? null);
+  const [watchIds, setWatchIds] = useState<string[]>(phrase?.watchIds ?? []);
 
   useEffect(() => {
     if (state === INITIAL_ACTION_STATE) return;
@@ -54,7 +54,9 @@ export function PhraseDialog({ open, onOpenChange, phrase, watches }: PhraseDial
           </DialogHeader>
 
           {phrase && <input type="hidden" name="id" value={phrase.id} />}
-          <input type="hidden" name="watchId" value={watchId ?? ""} />
+          {watchIds.map((id) => (
+            <input key={id} type="hidden" name="watchIds" value={id} />
+          ))}
 
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
@@ -63,7 +65,7 @@ export function PhraseDialog({ open, onOpenChange, phrase, watches }: PhraseDial
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Categoria</Label>
-              <WatchCombobox value={watchId} onChange={setWatchId} watches={watches} />
+              <WatchCombobox value={watchIds} onChange={setWatchIds} watches={watches} />
             </div>
           </div>
 

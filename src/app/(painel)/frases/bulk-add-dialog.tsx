@@ -27,7 +27,7 @@ export interface BulkAddDialogProps {
 /// categoria escolhida.
 export function BulkAddDialog({ open, onOpenChange, watches }: BulkAddDialogProps) {
   const [state, formAction, isPending] = useActionState(bulkCreatePhrases, INITIAL_ACTION_STATE);
-  const [watchId, setWatchId] = useState<string | null>(null);
+  const [watchIds, setWatchIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (state === INITIAL_ACTION_STATE) return;
@@ -49,12 +49,14 @@ export function BulkAddDialog({ open, onOpenChange, watches }: BulkAddDialogProp
             <DialogDescription>Cada linha vira uma frase da categoria escolhida.</DialogDescription>
           </DialogHeader>
 
-          <input type="hidden" name="watchId" value={watchId ?? ""} />
+          {watchIds.map((id) => (
+            <input key={id} type="hidden" name="watchIds" value={id} />
+          ))}
 
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
               <Label>Categoria</Label>
-              <WatchCombobox value={watchId} onChange={setWatchId} watches={watches} />
+              <WatchCombobox value={watchIds} onChange={setWatchIds} watches={watches} />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="bulk-lines">Frases (uma por linha)</Label>

@@ -14,6 +14,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { Phrase } from "@/generated/prisma";
+import type { PhraseWithWatchIds } from "@/lib/data/phrases";
 
 export interface PhrasePickerWatch {
   id: string;
@@ -23,7 +24,7 @@ export interface PhrasePickerWatch {
 export interface PhrasePickerProps {
   /// Frases já carregadas (este componente não busca no banco), para poder
   /// ser reusado tanto a partir de um Server Component quanto de um Client.
-  phrases: Phrase[];
+  phrases: PhraseWithWatchIds[];
   /// Watches conhecidos, pra resolver o rótulo do grupo — Phrase só guarda o
   /// watchId (cuid).
   watches: PhrasePickerWatch[];
@@ -38,7 +39,10 @@ const NONE_VALUE = "__none__";
 /// Escolhe uma frase de uma categoria, com botão de sortear uma aleatória
 /// dentre as ativas da categoria selecionada.
 export function PhrasePicker({ phrases, watches, onPick, className }: PhrasePickerProps) {
-  const groupKeys = useMemo(() => [...new Set(phrases.map((p) => p.watchId ?? NONE_VALUE))], [phrases]);
+  const groupKeys = useMemo(
+    () => [...new Set(phrases.flatMap((p) => (p.watchIds.length > 0 ? p.watchIds : [NONE_VALUE])))],
+    [phrases],
+  );
   const [category, setCategory] = useState(groupKeys[0] ?? "");
   const activeCategory = groupKeys.includes(category) ? category : (groupKeys[0] ?? "");
 
@@ -53,7 +57,12 @@ export function PhrasePicker({ phrases, watches, onPick, className }: PhrasePick
   }
 
   const inCategory = useMemo(
-    () => phrases.filter((p) => (p.watchId ?? NONE_VALUE) === activeCategory && p.active),
+    () =>
+      phrases.filter(
+        (p) =>
+          p.active &&
+          (activeCategory === NONE_VALUE ? p.watchIds.length === 0 : p.watchIds.includes(activeCategory)),
+      ),
     [phrases, activeCategory],
   );
 

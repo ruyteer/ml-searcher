@@ -14,13 +14,16 @@ function renderTemplate(body: string, vars: Record<string, string>): string {
   return body.replace(/\{\{(\w+)\}\}/g, (match, key: string) => vars[key] ?? match);
 }
 
-/// Sorteia uma frase ativa cujo watchId é exatamente igual ao do produto da
-/// oferta (nulo == nulo: produto sem watch usa o pool de frases sem watch) e
-/// soma o uso. Sem fallback cruzado: sem frase pro watchId exato, devolve
+/// Sorteia uma frase ativa vinculada (via PhraseWatch) ao watch do produto da
+/// oferta (produto sem watch usa o pool de frases sem nenhum vínculo, `none`)
+/// e soma o uso. Sem fallback cruzado: sem frase pro watchId exato, devolve
 /// string vazia — o template simplesmente fica sem ela.
 async function pickPhrase(watchId: string | null): Promise<string> {
   const phrases = await prisma.phrase.findMany({
-    where: { active: true, watchId },
+    where: {
+      active: true,
+      watches: watchId ? { some: { watchId } } : { none: {} },
+    },
     select: { id: true, text: true },
   });
   if (phrases.length === 0) return "";

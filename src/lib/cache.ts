@@ -27,7 +27,10 @@ const CASCADES: Partial<Record<Tag, Tag[]>> = {
   [TAGS.offers]: [TAGS.metrics],
   [TAGS.clicks]: [TAGS.links, TAGS.metrics],
   [TAGS.links]: [TAGS.metrics],
-  [TAGS.watches]: [TAGS.products],
+  // Apagar uma Watch cascateia os vínculos PhraseWatch dela (onDelete:
+  // Cascade) — sem isso a aba Frases mostra uma categoria fantasma até outra
+  // tag revalidar por acaso.
+  [TAGS.watches]: [TAGS.products, TAGS.phrases],
 };
 
 function withCascades(tags: Tag[]): Tag[] {
