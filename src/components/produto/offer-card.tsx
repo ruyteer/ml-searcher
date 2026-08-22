@@ -25,6 +25,9 @@ export interface OfferCardProps {
   offer: OfferListItem;
   hotDiscount: number;
   presells?: PresellOption[];
+  /// Existe instância do WhatsApp conectada com grupo habilitado? Controla
+  /// se "Enviar mensagem" aparece habilitado no menu de ações.
+  canSendWhatsapp: boolean;
   selected?: boolean;
   onToggleSelect?: (id: string) => void;
   className?: string;
@@ -38,7 +41,15 @@ export interface OfferCardProps {
 /// ("Ver histórico de preço"), que já cobre o que o mini gráfico mostrava.
 /// Status é atualizado de forma otimista; router.refresh() ressincroniza em
 /// segundo plano (contadores, filtros etc. dependem do servidor).
-export function OfferCard({ offer, hotDiscount, presells = [], selected, onToggleSelect, className }: OfferCardProps) {
+export function OfferCard({
+  offer,
+  hotDiscount,
+  presells = [],
+  canSendWhatsapp,
+  selected,
+  onToggleSelect,
+  className,
+}: OfferCardProps) {
   const router = useRouter();
   const [status, setStatus] = useState(offer.status);
   const [isPending, startTransition] = useTransition();
@@ -197,12 +208,14 @@ export function OfferCard({ offer, hotDiscount, presells = [], selected, onToggl
           />
           <OfferActionsMenu
             className="size-11 sm:size-7"
+            offerId={offer.id}
             productId={offer.product.id}
             productTitle={offer.product.title}
             presells={presells}
             status={status}
             blocked={blocked}
             isPending={isPending}
+            canSendWhatsapp={canSendWhatsapp}
             onMarkPublished={() => changeStatus(OfferStatus.PUBLISHED)}
             onMarkIgnored={() => changeStatus(OfferStatus.IGNORED)}
             onBlock={handleBlock}

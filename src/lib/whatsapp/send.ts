@@ -1,11 +1,11 @@
 import "server-only";
 import { prisma } from "../prisma";
 import { getSettings, setSettings, type Settings } from "../settings";
-import { TAGS, expire } from "../cache";
+import { TAGS, bust, expire } from "../cache";
 import { OfferStatus } from "@/generated/prisma";
 import { runScrape, startScrapeRun, ScrapeAlreadyRunningError } from "../scraper/run";
 import { sendText, sendMedia, UazapiError } from "./uazapi";
-import { buildOfferMessage } from "./message";
+import { buildOfferMessage, type OfferForMessage } from "./message";
 import { withAdvisoryLock } from "../db/advisory-lock";
 
 /// Não dispara uma nova varredura por esgotamento se a última começou há
@@ -79,6 +79,59 @@ async function findConnectedInstance() {
 }
 
 type ConnectedInstance = NonNullable<Awaited<ReturnType<typeof findConnectedInstance>>>;
+type ConnectedGroup = ConnectedInstance["groups"][number];
+
+/// Manda pra UM grupo (foto+legenda quando o produto tem thumbnail, texto
+/// com preview de link quando não tem) e grava o SendLog — sucesso ou falha.
+/// Compartilhado entre o ciclo automático e o envio manual do card: as duas
+/// vias têm que se comportar exatamente igual grupo a grupo.
+async function sendToGroup(
+  instance: ConnectedInstance,
+  group: ConnectedGroup,
+  thumbnail: string | null,
+  built: { text: string; linkId: string },
+): Promise<boolean> {
+  try {
+    if (thumbnail) {
+      await sendMedia(instance.host, instance.token, {
+        number: group.remoteJid,
+        file: thumbnail,
+        type: "image",
+        text: built.text,
+      });
+    } else {
+      await sendText(instance.host, instance.token, {
+        number: group.remoteJid,
+        text: built.text,
+        linkPreview: true,
+      });
+    }
+    await prisma.sendLog.create({
+      data: {
+        instanceId: instance.id,
+        groupId: group.id,
+        message: built.text,
+        linkId: built.linkId,
+        status: "sent",
+        sentAt: new Date(),
+      },
+    });
+    return true;
+  } catch (err) {
+    const error = err instanceof UazapiError ? err.message : err instanceof Error ? err.message : String(err);
+    await prisma.sendLog.create({
+      data: {
+        instanceId: instance.id,
+        groupId: group.id,
+        message: built.text,
+        linkId: built.linkId,
+        status: "failed",
+        error,
+      },
+    });
+    return false;
+  }
+}
 
 export type SkipCode =
   | "disabled"
@@ -243,48 +296,7 @@ async function runCycle(
 
     let anySuccess = false;
     for (const group of instance.groups) {
-      try {
-        // Com foto do produto fica muito melhor a visualização no grupo — a
-        // legenda leva o mesmo texto que iria no envio só-texto. Sem
-        // thumbnail (raro), cai pro texto com preview de link normal.
-        if (offer.product.thumbnail) {
-          await sendMedia(instance.host, instance.token, {
-            number: group.remoteJid,
-            file: offer.product.thumbnail,
-            type: "image",
-            text: built.text,
-          });
-        } else {
-          await sendText(instance.host, instance.token, {
-            number: group.remoteJid,
-            text: built.text,
-            linkPreview: true,
-          });
-        }
-        await prisma.sendLog.create({
-          data: {
-            instanceId: instance.id,
-            groupId: group.id,
-            message: built.text,
-            linkId: built.linkId,
-            status: "sent",
-            sentAt: new Date(),
-          },
-        });
-        anySuccess = true;
-      } catch (err) {
-        const error = err instanceof UazapiError ? err.message : err instanceof Error ? err.message : String(err);
-        await prisma.sendLog.create({
-          data: {
-            instanceId: instance.id,
-            groupId: group.id,
-            message: built.text,
-            linkId: built.linkId,
-            status: "failed",
-            error,
-          },
-        });
-      }
+      if (await sendToGroup(instance, group, offer.product.thumbnail, built)) anySuccess = true;
     }
 
     // Marca como enviada mesmo se todos os grupos falharam: evita ficar
@@ -331,4 +343,64 @@ export async function runWhatsappCycle(requestHeaders?: Headers): Promise<Whatsa
     () => skipResult("already_running", "outro ciclo de envio já está rodando", settings, dueAt, tickToleranceMs),
     () => runCycle(settings, instance, requestHeaders),
   );
+}
+
+export class ManualSendError extends Error {}
+
+export interface ManualSendResult {
+  totalGroups: number;
+  successGroups: number;
+}
+
+/// Envio manual de UMA oferta, disparado pelo card em /ofertas ("Enviar
+/// mensagem"). Monta e manda exatamente como o ciclo automático — mesma
+/// `buildOfferMessage`, mesmo `sendToGroup` grupo a grupo, mesmo SendLog —
+/// mas sem esperar a grade do agendamento nem o dedup por `whatsappSentAt`:
+/// é a via pra testar um envio (ou reenviar de propósito) sem depender do
+/// cron. Ainda assim exige as mesmas condições de elegibilidade do produto
+/// que o ciclo automático (ver findEligibleOffers) — só o "é hora?" fica de
+/// fora.
+export async function sendOfferNow(offerId: string, requestHeaders?: Headers): Promise<ManualSendResult> {
+  const settings = await getSettings();
+
+  const instance = await findConnectedInstance();
+  if (!instance) throw new ManualSendError("Nenhuma instância do WhatsApp conectada.");
+  if (instance.groups.length === 0) throw new ManualSendError("Nenhum grupo habilitado para envio.");
+
+  const offer = await prisma.offer.findUnique({
+    where: { id: offerId },
+    include: {
+      product: {
+        select: { title: true, thumbnail: true, watchId: true, blocked: true, hiddenByWords: true, affiliateEligible: true },
+      },
+    },
+  });
+  if (!offer) throw new ManualSendError("Oferta não encontrada.");
+  if (offer.product.blocked || offer.product.hiddenByWords || offer.product.affiliateEligible !== true) {
+    throw new ManualSendError("Produto bloqueado, oculto ou ainda pendente de confirmação no programa de afiliados.");
+  }
+
+  const offerForMessage: OfferForMessage = {
+    id: offer.id,
+    price: offer.price,
+    referencePrice: offer.referencePrice,
+    discountPct: offer.discountPct,
+    productId: offer.productId,
+    product: offer.product,
+  };
+  const built = await buildOfferMessage(offerForMessage, settings, requestHeaders);
+
+  let successGroups = 0;
+  for (const group of instance.groups) {
+    if (await sendToGroup(instance, group, offer.product.thumbnail, built)) successGroups += 1;
+  }
+
+  // Mesmo registro que o ciclo automático faz ao final: evita que o cron
+  // mande esta oferta de novo por achar que ela ainda está pendente.
+  await prisma.offer.update({ where: { id: offer.id }, data: { whatsappSentAt: new Date() } });
+  bust(TAGS.whatsapp, TAGS.offers, TAGS.links);
+
+  if (successGroups === 0) throw new ManualSendError("Falha ao enviar para todos os grupos habilitados.");
+
+  return { totalGroups: instance.groups.length, successGroups };
 }

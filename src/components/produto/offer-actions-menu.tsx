@@ -14,6 +14,7 @@ import {
   Analytics01Icon,
 } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
+import { IconWhatsapp } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -38,17 +39,22 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { LinkKind, OfferStatus } from "@/lib/enums";
-import { generateLink } from "@/app/(painel)/ofertas/actions";
+import { generateLink, sendOfferMessage } from "@/app/(painel)/ofertas/actions";
 import { PriceHistorySheet } from "./price-history-sheet";
 import type { PresellOption } from "./generate-link-menu";
 
 export interface OfferActionsMenuProps {
+  offerId: string;
   productId: string;
   productTitle: string;
   presells: PresellOption[];
   status: OfferStatus;
   blocked: boolean;
   isPending: boolean;
+  /// Existe instância do WhatsApp conectada com grupo habilitado? Sem isso o
+  /// item "Enviar mensagem" fica desabilitado — mesma condição que o envio
+  /// automático exige (ver src/lib/whatsapp/send.ts).
+  canSendWhatsapp: boolean;
   onMarkPublished: () => void;
   onMarkIgnored: () => void;
   onBlock: () => void;
@@ -69,19 +75,23 @@ export interface OfferActionsMenuProps {
 /// ficam como IRMÃOS do DropdownMenu, controlados por estado, nunca aninhados
 /// dentro do conteúdo do menu.
 export function OfferActionsMenu({
+  offerId,
   productId,
   productTitle,
   presells,
   status,
   blocked,
   isPending,
+  canSendWhatsapp,
   onMarkPublished,
   onMarkIgnored,
   onBlock,
   className,
 }: OfferActionsMenuProps) {
   const [isLinkPending, startLinkTransition] = useTransition();
+  const [isSendPending, startSendTransition] = useTransition();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [sendConfirmOpen, setSendConfirmOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const runGenerate = (kind: LinkKind, presellId?: string) => {
@@ -96,6 +106,21 @@ export function OfferActionsMenu({
     });
   };
 
+  const runSend = () => {
+    startSendTransition(async () => {
+      try {
+        const result = await sendOfferMessage(offerId);
+        toast.success(
+          result.successGroups === result.totalGroups
+            ? `Mensagem enviada para ${result.successGroups} grupo${result.successGroups === 1 ? "" : "s"}`
+            : `Enviada para ${result.successGroups} de ${result.totalGroups} grupos — alguns falharam`,
+        );
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Não foi possível enviar a mensagem");
+      }
+    });
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -105,10 +130,10 @@ export function OfferActionsMenu({
               variant="outline"
               size="icon-sm"
               className={className}
-              disabled={isPending || isLinkPending}
+              disabled={isPending || isLinkPending || isSendPending}
               aria-label="Mais ações"
             >
-              {isLinkPending ? (
+              {isLinkPending || isSendPending ? (
                 <HugeiconsIcon icon={Loading03Icon} size={14} strokeWidth={1.5} className="animate-spin" />
               ) : (
                 <HugeiconsIcon icon={MoreVerticalIcon} size={16} strokeWidth={1.5} />
@@ -151,6 +176,16 @@ export function OfferActionsMenu({
 
           <DropdownMenuSeparator />
 
+          <DropdownMenuItem
+            disabled={isPending || isSendPending || !canSendWhatsapp}
+            onClick={() => setSendConfirmOpen(true)}
+          >
+            <HugeiconsIcon icon={IconWhatsapp} size={15} strokeWidth={1.5} />
+            {canSendWhatsapp ? "Enviar mensagem no grupo" : "Enviar mensagem (sem instância conectada)"}
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
           <DropdownMenuItem disabled={isPending || status === OfferStatus.PUBLISHED} onClick={onMarkPublished}>
             <HugeiconsIcon icon={Tick02Icon} size={15} strokeWidth={1.5} /> Marcar como já publicada
           </DropdownMenuItem>
@@ -185,6 +220,29 @@ export function OfferActionsMenu({
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction variant="destructive" onClick={onBlock}>
               Bloquear
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={sendConfirmOpen} onOpenChange={setSendConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Enviar esta oferta agora?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Manda {productTitle} pra todo grupo habilitado da instância conectada, com a mesma frase e template que
+              o envio automático usaria. Não dá pra desfazer depois de enviado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setSendConfirmOpen(false);
+                runSend();
+              }}
+            >
+              Enviar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

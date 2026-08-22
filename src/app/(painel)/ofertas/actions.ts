@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { TAGS, bust } from "@/lib/cache";
 import { createLink, publicUrl } from "@/lib/links";
 import { getSettings } from "@/lib/settings";
+import { sendOfferNow, type ManualSendResult } from "@/lib/whatsapp/send";
 
 // Os Server Actions moram aqui, e não junto das leituras em
 // src/lib/data/offers.ts: componentes cliente só podem importar ações de um
@@ -83,6 +84,15 @@ export async function generateLink(input: GenerateLinkInput): Promise<GeneratedL
   bust(TAGS.links);
 
   return { id: link.id, slug: link.slug, kind: link.kind, url };
+}
+
+/// Envio manual de uma oferta pro WhatsApp, disparado pelo botão "Enviar
+/// mensagem" do card — mesma regra do ciclo automático (ver
+/// src/lib/whatsapp/send.ts), só sem esperar a grade do agendamento.
+/// ManualSendError (e qualquer outro erro) sobe crua: o cliente já trata
+/// `err.message` do jeito que faz com generateLink acima.
+export async function sendOfferMessage(offerId: string): Promise<ManualSendResult> {
+  return sendOfferNow(offerId, await headers());
 }
 
 // ------------------------------------------------- histórico de preço (Sheet)

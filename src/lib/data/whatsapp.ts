@@ -148,3 +148,18 @@ async function fetchOverview(): Promise<WhatsappOverview> {
 export const getWhatsappOverview = unstable_cache(fetchOverview, ["whatsapp-overview"], {
   tags: [TAGS.whatsapp, TAGS.offers, TAGS.settings, TAGS.presells],
 });
+
+/// Existe instância conectada com pelo menos um grupo habilitado? É o que
+/// decide se o botão "Enviar mensagem" do card de oferta fica disponível —
+/// mesma condição que src/lib/whatsapp/send.ts exige pra aceitar um envio.
+async function fetchSendReady(): Promise<boolean> {
+  const instance = await prisma.whatsappInstance.findFirst({
+    where: { active: true, status: "connected" },
+    include: { groups: { where: { enabled: true }, take: 1, select: { id: true } } },
+  });
+  return Boolean(instance && instance.groups.length > 0);
+}
+
+export const getWhatsappSendReady = unstable_cache(fetchSendReady, ["whatsapp-send-ready"], {
+  tags: [TAGS.whatsapp],
+});

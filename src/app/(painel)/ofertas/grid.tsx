@@ -3,6 +3,7 @@ import { EmptyState } from "@/components/shell/empty-state";
 import { getOffers, getActivePresells, type OfferFilters } from "@/lib/data/offers";
 import { getWatchOptions } from "@/lib/data/products";
 import { getSettings } from "@/lib/settings";
+import { getWhatsappSendReady } from "@/lib/data/whatsapp";
 import { SelectableOfferCard } from "./selectable-offer-card";
 import { OffersPagination } from "./offers-pagination";
 
@@ -45,11 +46,12 @@ function summarize(filters: OfferFilters, shown: number, total: number, watchLab
 /// Busca os dados e renderiza o grid. Server Component async, fica dentro do
 /// <Suspense> de page.tsx pra não travar o resto da UI durante o fetch.
 export async function OffersGrid({ filters }: { filters: OfferFilters }) {
-  const [result, presells, settings, watches] = await Promise.all([
+  const [result, presells, settings, watches, canSendWhatsapp] = await Promise.all([
     getOffers(filters),
     getActivePresells(),
     getSettings(),
     getWatchOptions(),
+    getWhatsappSendReady(),
   ]);
 
   if (result.items.length === 0) {
@@ -85,7 +87,13 @@ export async function OffersGrid({ filters }: { filters: OfferFilters }) {
           do celular, largura em que nome e preço ainda são legíveis. */}
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         {result.items.map((offer) => (
-          <SelectableOfferCard key={offer.id} offer={offer} hotDiscount={settings.hotDiscount} presells={presells} />
+          <SelectableOfferCard
+            key={offer.id}
+            offer={offer}
+            hotDiscount={settings.hotDiscount}
+            presells={presells}
+            canSendWhatsapp={canSendWhatsapp}
+          />
         ))}
       </div>
       <OffersPagination pageCount={result.pageCount} total={result.total} />
