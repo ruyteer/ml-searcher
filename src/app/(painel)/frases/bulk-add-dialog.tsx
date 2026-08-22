@@ -13,21 +13,21 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { CategoryCombobox } from "./category-combobox";
+import { WatchCombobox, type WatchComboboxOption } from "./watch-combobox";
 import { bulkCreatePhrases } from "./actions";
 import { INITIAL_ACTION_STATE } from "./action-state";
 
 export interface BulkAddDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  categories: string[];
+  watches: WatchComboboxOption[];
 }
 
 /// Cola uma lista pronta: cada linha da textarea vira uma Phrase da
 /// categoria escolhida.
-export function BulkAddDialog({ open, onOpenChange, categories }: BulkAddDialogProps) {
+export function BulkAddDialog({ open, onOpenChange, watches }: BulkAddDialogProps) {
   const [state, formAction, isPending] = useActionState(bulkCreatePhrases, INITIAL_ACTION_STATE);
-  const [category, setCategory] = useState(categories[0] ?? "geral");
+  const [watchId, setWatchId] = useState<string | null>(null);
 
   useEffect(() => {
     if (state === INITIAL_ACTION_STATE) return;
@@ -49,12 +49,12 @@ export function BulkAddDialog({ open, onOpenChange, categories }: BulkAddDialogP
             <DialogDescription>Cada linha vira uma frase da categoria escolhida.</DialogDescription>
           </DialogHeader>
 
-          <input type="hidden" name="category" value={category} />
+          <input type="hidden" name="watchId" value={watchId ?? ""} />
 
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
               <Label>Categoria</Label>
-              <CategoryCombobox value={category} onChange={setCategory} categories={categories} />
+              <WatchCombobox value={watchId} onChange={setWatchId} watches={watches} />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="bulk-lines">Frases (uma por linha)</Label>

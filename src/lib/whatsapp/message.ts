@@ -14,11 +14,13 @@ function renderTemplate(body: string, vars: Record<string, string>): string {
   return body.replace(/\{\{(\w+)\}\}/g, (match, key: string) => vars[key] ?? match);
 }
 
-/// Sorteia uma frase ativa (qualquer categoria) e soma o uso. Sem frase
-/// cadastrada, devolve string vazia — o template simplesmente fica sem ela.
-async function pickPhrase(): Promise<string> {
+/// Sorteia uma frase ativa cujo watchId é exatamente igual ao do produto da
+/// oferta (nulo == nulo: produto sem watch usa o pool de frases sem watch) e
+/// soma o uso. Sem fallback cruzado: sem frase pro watchId exato, devolve
+/// string vazia — o template simplesmente fica sem ela.
+async function pickPhrase(watchId: string | null): Promise<string> {
   const phrases = await prisma.phrase.findMany({
-    where: { active: true },
+    where: { active: true, watchId },
     select: { id: true, text: true },
   });
   if (phrases.length === 0) return "";
@@ -47,7 +49,7 @@ export interface OfferForMessage {
   referencePrice: number;
   discountPct: number;
   productId: string;
-  product: { title: string };
+  product: { title: string; watchId: string | null };
 }
 
 export interface BuiltMessage {
@@ -68,7 +70,7 @@ export async function buildOfferMessage(
   const usePresell = settings.whatsappUsePresell;
 
   const [phrase, templateBody, link] = await Promise.all([
-    pickPhrase(),
+    pickPhrase(offer.product.watchId),
     pickTemplate(),
     createLink({
       productId: offer.productId,

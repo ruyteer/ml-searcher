@@ -124,54 +124,58 @@ async function main() {
   // Phrases — ~25 frases curtas para grupo de WhatsApp de ofertas
   // ============================================================================
 
+  // "grupo" é só uma chave interna deste script (tipo de copy: abertura/
+  // urgência/cta/emoji/geral) — não existe mais no schema. Usada
+  // EXCLUSIVAMENTE para preservar os ids determinísticos já semeados; não
+  // é gravada no banco.
   const phrases = [
     // Abertura
-    { text: "🔥 ACHADO DO DIA", category: "abertura" },
-    { text: "🚨 SUPER OFERTA AGORA", category: "abertura" },
-    { text: "💥 DESCE O PREÇO", category: "abertura" },
-    { text: "🎯 VEM VER ISSO", category: "abertura" },
-    { text: "⚡ IMPERDÍVEL", category: "abertura" },
+    { text: "🔥 ACHADO DO DIA", grupo: "abertura" },
+    { text: "🚨 SUPER OFERTA AGORA", grupo: "abertura" },
+    { text: "💥 DESCE O PREÇO", grupo: "abertura" },
+    { text: "🎯 VEM VER ISSO", grupo: "abertura" },
+    { text: "⚡ IMPERDÍVEL", grupo: "abertura" },
 
     // Urgência
-    { text: "Corre que é por tempo limitado ⏰", category: "urgencia" },
-    { text: "Válido só enquanto durar estoque 🏃", category: "urgencia" },
-    { text: "Última chance antes do preço subir 📈", category: "urgencia" },
-    { text: "Sai de estoque rápido 🔔", category: "urgencia" },
-    { text: "Oferecidos até meia-noite ⏳", category: "urgencia" },
+    { text: "Corre que é por tempo limitado ⏰", grupo: "urgencia" },
+    { text: "Válido só enquanto durar estoque 🏃", grupo: "urgencia" },
+    { text: "Última chance antes do preço subir 📈", grupo: "urgencia" },
+    { text: "Sai de estoque rápido 🔔", grupo: "urgencia" },
+    { text: "Oferecidos até meia-noite ⏳", grupo: "urgencia" },
 
     // CTA
-    { text: "Garanta o seu pelo link 👇", category: "cta" },
-    { text: "Clica aqui e aproveita 👆", category: "cta" },
-    { text: "Acessa a oferta completa aqui ⬇", category: "cta" },
-    { text: "Não deixa passar, clica no link 🔗", category: "cta" },
-    { text: "Libera a oferta lá embaixo 👇", category: "cta" },
-    { text: "Corre pro link antes de acabar 🏃💨", category: "cta" },
+    { text: "Garanta o seu pelo link 👇", grupo: "cta" },
+    { text: "Clica aqui e aproveita 👆", grupo: "cta" },
+    { text: "Acessa a oferta completa aqui ⬇", grupo: "cta" },
+    { text: "Não deixa passar, clica no link 🔗", grupo: "cta" },
+    { text: "Libera a oferta lá embaixo 👇", grupo: "cta" },
+    { text: "Corre pro link antes de acabar 🏃💨", grupo: "cta" },
 
     // Emoji (linhas decorativas)
-    { text: "🔥🔥🔥🔥🔥", category: "emoji" },
-    { text: "⚡⚡⚡⚡⚡", category: "emoji" },
-    { text: "💥💥💥💥💥", category: "emoji" },
-    { text: "✨✨✨✨✨", category: "emoji" },
-    { text: "🎯🎯🎯🎯🎯", category: "emoji" },
-    { text: "━━━━━━━━━━", category: "emoji" },
-    { text: "════════════", category: "emoji" },
+    { text: "🔥🔥🔥🔥🔥", grupo: "emoji" },
+    { text: "⚡⚡⚡⚡⚡", grupo: "emoji" },
+    { text: "💥💥💥💥💥", grupo: "emoji" },
+    { text: "✨✨✨✨✨", grupo: "emoji" },
+    { text: "🎯🎯🎯🎯🎯", grupo: "emoji" },
+    { text: "━━━━━━━━━━", grupo: "emoji" },
+    { text: "════════════", grupo: "emoji" },
 
     // Geral
-    { text: "Melhor preço da internet 💰", category: "geral" },
-    { text: "Frete grátis pra todo Brasil 📦", category: "geral" },
-    { text: "Parcelado sem juros 💳", category: "geral" },
+    { text: "Melhor preço da internet 💰", grupo: "geral" },
+    { text: "Frete grátis pra todo Brasil 📦", grupo: "geral" },
+    { text: "Parcelado sem juros 💳", grupo: "geral" },
   ];
 
   // Índice na chave porque frases só de emoji não geram slug utilizável.
   for (const [i, phrase] of phrases.entries()) {
-    const id = seedId("phrase", `${String(i + 1).padStart(2, "0")}-${phrase.category}`);
+    const id = seedId("phrase", `${String(i + 1).padStart(2, "0")}-${phrase.grupo}`);
     await prisma.phrase.upsert({
       where: { id },
-      update: { text: phrase.text, category: phrase.category, active: true },
+      update: { text: phrase.text, active: true },
       create: {
         id,
         text: phrase.text,
-        category: phrase.category,
+        watchId: null,
         active: true,
       },
     });

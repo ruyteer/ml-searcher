@@ -42,6 +42,7 @@ model Watch {
   auto       Boolean   @default(false)
 
   products   Product[]
+  phrases    Phrase[]
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
@@ -281,13 +282,16 @@ model Presell {
 model Phrase {
   id         String   @id @default(cuid())
   text       String
-  /// Agrupador livre: "abertura", "urgência", "cta", "emoji"...
-  category   String   @default("geral")
   usageCount Int      @default(0)
   active     Boolean  @default(true)
   createdAt  DateTime @default(now())
 
-  @@index([category, active])
+  /// Categoria monitorada (Watch) à qual a frase pertence. Nula = pool
+  /// geral, usável por qualquer categoria.
+  watchId    String?
+  watch      Watch?   @relation(fields: [watchId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([watchId, active])
 }
 
 model MessageTemplate {

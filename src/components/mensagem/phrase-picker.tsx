@@ -13,26 +13,47 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { getCategoryLabel } from "@/lib/frases-labels";
 import type { Phrase } from "@/generated/prisma";
+
+export interface PhrasePickerWatch {
+  id: string;
+  label: string;
+}
 
 export interface PhrasePickerProps {
   /// Frases já carregadas (este componente não busca no banco), para poder
   /// ser reusado tanto a partir de um Server Component quanto de um Client.
   phrases: Phrase[];
+  /// Watches conhecidos, pra resolver o rótulo do grupo — Phrase só guarda o
+  /// watchId (cuid).
+  watches: PhrasePickerWatch[];
   onPick: (phrase: Phrase) => void;
   className?: string;
 }
 
+/// Sentinela pro grupo "Sem categoria" (watchId nulo) — o Select não aceita
+/// valor vazio, então usamos essa chave interna em vez de "".
+const NONE_VALUE = "__none__";
+
 /// Escolhe uma frase de uma categoria, com botão de sortear uma aleatória
 /// dentre as ativas da categoria selecionada.
-export function PhrasePicker({ phrases, onPick, className }: PhrasePickerProps) {
-  const categories = useMemo(() => [...new Set(phrases.map((p) => p.category))], [phrases]);
-  const [category, setCategory] = useState(categories[0] ?? "");
-  const activeCategory = categories.includes(category) ? category : (categories[0] ?? "");
+export function PhrasePicker({ phrases, watches, onPick, className }: PhrasePickerProps) {
+  const groupKeys = useMemo(() => [...new Set(phrases.map((p) => p.watchId ?? NONE_VALUE))], [phrases]);
+  const [category, setCategory] = useState(groupKeys[0] ?? "");
+  const activeCategory = groupKeys.includes(category) ? category : (groupKeys[0] ?? "");
+
+  const labelByWatchId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const w of watches) map.set(w.id, w.label);
+    return map;
+  }, [watches]);
+
+  function labelFor(key: string): string {
+    return key === NONE_VALUE ? "Sem categoria" : (labelByWatchId.get(key) ?? key);
+  }
 
   const inCategory = useMemo(
-    () => phrases.filter((p) => p.category === activeCategory && p.active),
+    () => phrases.filter((p) => (p.watchId ?? NONE_VALUE) === activeCategory && p.active),
     [phrases, activeCategory],
   );
 
@@ -41,7 +62,7 @@ export function PhrasePicker({ phrases, onPick, className }: PhrasePickerProps) 
     onPick(inCategory[Math.floor(Math.random() * inCategory.length)]);
   }
 
-  if (categories.length === 0) {
+  if (groupKeys.length === 0) {
     return (
       <p className={cn("text-xs text-muted-foreground", className)}>Nenhuma frase cadastrada ainda.</p>
     );
@@ -53,13 +74,13 @@ export function PhrasePicker({ phrases, onPick, className }: PhrasePickerProps) 
         <Select value={activeCategory} onValueChange={(v) => setCategory(v ?? "")}>
           <SelectTrigger className="flex-1">
             <SelectValue placeholder="Categoria">
-              {(v: string | null) => (v ? getCategoryLabel(v) : "Categoria")}
+              {(v: string | null) => (v ? labelFor(v) : "Categoria")}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {categories.map((c) => (
-              <SelectItem key={c} value={c}>
-                {getCategoryLabel(c)}
+            {groupKeys.map((key) => (
+              <SelectItem key={key} value={key}>
+                {labelFor(key)}
               </SelectItem>
             ))}
           </SelectContent>

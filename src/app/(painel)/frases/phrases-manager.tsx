@@ -10,20 +10,28 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { getCategoryLabel, SORT_LABELS, type PhraseSortBy } from "@/lib/frases-labels";
+import { SORT_LABELS, type PhraseSortBy } from "@/lib/frases-labels";
+import { IconAlerta } from "@/components/icons";
 import type { PhraseGroup } from "@/lib/data/phrases";
 import { PhraseRow } from "./phrase-row";
 import { PhraseDialog } from "./phrase-dialog";
 import { BulkAddDialog } from "./bulk-add-dialog";
+import { AlertBox } from "./alert-box";
+import type { WatchComboboxOption } from "./watch-combobox";
 import type { Phrase } from "@/generated/prisma";
 
 export interface PhrasesManagerProps {
   groups: PhraseGroup[];
-  categories: string[];
+  watches: WatchComboboxOption[];
 }
 
+/// Sentinela de URL/estado para o grupo "Sem categoria" (watchId nulo) — ""
+/// já significa "todas as categorias" no filtro, então null precisa de outro
+/// valor pra não colidir com ele.
+const NONE_VALUE = "__none__";
+
 interface CategoryFilterItem {
-  /// "" representa "todas as categorias".
+  /// "" = todas as categorias; NONE_VALUE = sem categoria; senão, o watchId.
   value: string;
   label: string;
   count: number;
@@ -32,7 +40,7 @@ interface CategoryFilterItem {
 /// Lista de frases pensada pra escalar a dezenas ou centenas de itens: uma
 /// linha por frase (não um card), categoria como filtro lateral em vez de
 /// uma seção por categoria, e grade de várias colunas em telas largas.
-export function PhrasesManager({ groups, categories }: PhrasesManagerProps) {
+export function PhrasesManager({ groups, watches }: PhrasesManagerProps) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<PhraseSortBy>("recent");
   const [category, setCategory] = useQueryState("categoria", { defaultValue: "" });
@@ -43,6 +51,14 @@ export function PhrasesManager({ groups, categories }: PhrasesManagerProps) {
   const allPhrases = useMemo(() => groups.flatMap((g) => g.phrases), [groups]);
   const totalPhrases = allPhrases.length;
 
+  // Rótulo do grupo de cada frase, pra badge de categoria da linha — Phrase
+  // só guarda o watchId (cuid), quem resolve o texto pro usuário é aqui.
+  const labelByWatchId = useMemo(() => {
+    const map = new Map<string | null, string>();
+    for (const g of groups) map.set(g.watchId, g.label);
+    return map;
+  }, [groups]);
+
   // Frases que batem com a busca, sem considerar a categoria selecionada
   // ainda: alimenta o contador por categoria na barra lateral.
   const matchingSearch = useMemo(() => {
@@ -52,25 +68,51 @@ export function PhrasesManager({ groups, categories }: PhrasesManagerProps) {
 
   const categoryFilters: CategoryFilterItem[] = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const p of matchingSearch) counts.set(p.category, (counts.get(p.category) ?? 0) + 1);
-    const items = groups.map((g) => ({
-      value: g.category,
-      label: getCategoryLabel(g.category),
-      count: counts.get(g.category) ?? 0,
-    }));
+    for (const p of matchingSearch) {
+      const key = p.watchId ?? NONE_VALUE;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const items = groups.map((g) => {
+      const key = g.watchId ?? NONE_VALUE;
+      return { value: key, label: g.label, count: counts.get(key) ?? 0 };
+    });
     return [{ value: "", label: "Todas", count: matchingSearch.length }, ...items];
   }, [groups, matchingSearch]);
 
   const activeCategory = categoryFilters.some((c) => c.value === category) ? category : "";
 
   const visiblePhrases = useMemo(() => {
-    let list = activeCategory ? matchingSearch.filter((p) => p.category === activeCategory) : matchingSearch;
+    let list = matchingSearch;
+    if (activeCategory) {
+      const targetWatchId = activeCategory === NONE_VALUE ? null : activeCategory;
+      list = list.filter((p) => p.watchId === targetWatchId);
+    }
     if (sortBy === "usage") list = [...list].sort((a, b) => b.usageCount - a.usageCount);
     return list;
   }, [matchingSearch, activeCategory, sortBy]);
 
+  // Aviso de dia-um: a migration jogou toda frase existente em "Sem
+  // categoria" (não havia como casar tipo de copy antigo com Watch). Se essa
+  // pilha concentra a maioria das frases e já existem categorias cadastradas,
+  // o usuário provavelmente não sabe que precisa recategorizar na mão — sem
+  // isso, ofertas de categorias com Watch saem sem frase no WhatsApp.
+  const semCategoriaCount = groups.find((g) => g.watchId === null)?.phrases.length ?? 0;
+  const showMigrationWarning = watches.length > 0 && totalPhrases > 0 && semCategoriaCount / totalPhrases > 0.5;
+
   return (
     <div className="flex flex-col gap-4">
+      {showMigrationWarning && (
+        <AlertBox icon={IconAlerta} variant="warning" title="A maioria das frases está sem categoria">
+          <p>
+            {semCategoriaCount} de {totalPhrases} frases não têm categoria — a atualização que trouxe categorias
+            reais não conseguiu adivinhar a qual categoria cada frase antiga pertencia. Enquanto isso, ofertas de
+            categorias com Watch saem <strong>sem frase</strong> nas mensagens do WhatsApp: o pool &quot;Sem
+            categoria&quot; não serve de reserva pra elas. Edite as frases e escolha uma categoria pra elas
+            voltarem a aparecer.
+          </p>
+        </AlertBox>
+      )}
+
       {/* Filtro de categoria em telas pequenas: chips roláveis na horizontal. */}
       <div className="flex gap-1.5 overflow-x-auto pb-0.5 lg:hidden">
         {categoryFilters.map((c) => (
@@ -154,7 +196,9 @@ export function PhrasesManager({ groups, categories }: PhrasesManagerProps) {
           {totalPhrases > 0 && (
             <p className="text-xs text-muted-foreground">
               {visiblePhrases.length} de {totalPhrases} frase{totalPhrases === 1 ? "" : "s"}
-              {activeCategory ? ` na categoria "${getCategoryLabel(activeCategory)}"` : ""}
+              {activeCategory
+                ? ` na categoria "${categoryFilters.find((c) => c.value === activeCategory)?.label}"`
+                : ""}
             </p>
           )}
 
@@ -178,6 +222,7 @@ export function PhrasesManager({ groups, categories }: PhrasesManagerProps) {
                   key={phrase.id}
                   phrase={phrase}
                   onEdit={() => setEditing(phrase)}
+                  categoryLabel={labelByWatchId.get(phrase.watchId) ?? "Sem categoria"}
                   showCategory={!activeCategory}
                 />
               ))}
@@ -196,13 +241,13 @@ export function PhrasesManager({ groups, categories }: PhrasesManagerProps) {
           }
         }}
         phrase={editing}
-        categories={categories}
+        watches={watches}
       />
       <BulkAddDialog
         key={bulkOpen ? "bulk-open" : "bulk-closed"}
         open={bulkOpen}
         onOpenChange={setBulkOpen}
-        categories={categories}
+        watches={watches}
       />
     </div>
   );

@@ -2,13 +2,13 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { TAGS } from "@/lib/cache";
-import { CATEGORY_ORDER } from "@/lib/frases-labels";
+import { listWatchTree } from "@/lib/data/watches";
 import type { Phrase, MessageTemplate } from "@/generated/prisma";
 
 // ------------------------------------------------------------------ phrases
 
 const loadPhrases = unstable_cache(
-  async () => prisma.phrase.findMany({ orderBy: [{ category: "asc" }, { createdAt: "asc" }] }),
+  async () => prisma.phrase.findMany({ orderBy: { createdAt: "asc" } }),
   ["phrases"],
   { tags: [TAGS.phrases] },
 );
@@ -18,39 +18,52 @@ export async function getPhrases(): Promise<Phrase[]> {
 }
 
 export interface PhraseGroup {
-  category: string;
+  watchId: string | null;
+  label: string;
   phrases: Phrase[];
 }
 
-function categoryRank(category: string): number {
-  const idx = CATEGORY_ORDER.indexOf(category);
-  return idx === -1 ? CATEGORY_ORDER.length : idx;
+/// Frases agrupadas por watch, na ordem exibida pela aba "Frases": segue a
+/// ordem de árvore de `listWatchTree()`, com o grupo "Sem categoria"
+/// (watchId nulo) sempre por último. Só entram grupos com pelo menos 1 frase.
+const loadPhrasesGroupedByWatch = unstable_cache(
+  async () => {
+    const [phrases, watches] = await Promise.all([
+      prisma.phrase.findMany({ orderBy: { createdAt: "asc" } }),
+      listWatchTree(),
+    ]);
+
+    const byWatch = new Map<string | null, Phrase[]>();
+    for (const phrase of phrases) {
+      const list = byWatch.get(phrase.watchId) ?? [];
+      list.push(phrase);
+      byWatch.set(phrase.watchId, list);
+    }
+
+    const groups: PhraseGroup[] = [];
+    for (const watch of watches) {
+      const list = byWatch.get(watch.id);
+      if (list) groups.push({ watchId: watch.id, label: watch.label, phrases: list });
+    }
+
+    const semCategoria = byWatch.get(null);
+    if (semCategoria) groups.push({ watchId: null, label: "Sem categoria", phrases: semCategoria });
+
+    return groups;
+  },
+  ["phrases-grouped-by-watch"],
+  { tags: [TAGS.phrases, TAGS.watches] },
+);
+
+export async function getPhrasesGroupedByWatch(): Promise<PhraseGroup[]> {
+  return loadPhrasesGroupedByWatch();
 }
 
-/// Frases agrupadas por categoria, na ordem exibida pela aba "Frases".
-export async function getPhrasesGroupedByCategory(): Promise<PhraseGroup[]> {
-  const phrases = await getPhrases();
-  const byCategory = new Map<string, Phrase[]>();
-  for (const phrase of phrases) {
-    const list = byCategory.get(phrase.category) ?? [];
-    list.push(phrase);
-    byCategory.set(phrase.category, list);
-  }
-
-  const categories = [...byCategory.keys()].sort((a, b) => {
-    const rankDiff = categoryRank(a) - categoryRank(b);
-    if (rankDiff !== 0) return rankDiff;
-    return a.localeCompare(b, "pt-BR");
-  });
-
-  return categories.map((category) => ({ category, phrases: byCategory.get(category)! }));
-}
-
-/// Categorias já usadas — alimenta as sugestões do Combobox de categoria.
-export async function getPhraseCategories(): Promise<string[]> {
-  const phrases = await getPhrases();
-  const set = new Set(phrases.map((p) => p.category));
-  return [...set].sort((a, b) => categoryRank(a) - categoryRank(b) || a.localeCompare(b, "pt-BR"));
+/// Opções de watch pro seletor de categoria da aba Frases — repasse de
+/// `listWatchTree()` no shape que a UI precisa.
+export async function getPhraseWatchOptions(): Promise<{ id: string; label: string; depth: number }[]> {
+  const watches = await listWatchTree();
+  return watches.map((w) => ({ id: w.id, label: w.label, depth: w.depth }));
 }
 
 // ---------------------------------------------------------------- templates

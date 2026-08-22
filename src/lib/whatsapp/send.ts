@@ -47,7 +47,7 @@ async function findEligibleOffers(take: number) {
     },
     orderBy: [{ score: "desc" }, { detectedAt: "asc" }],
     take,
-    include: { product: { select: { title: true, thumbnail: true } } },
+    include: { product: { select: { title: true, thumbnail: true, watchId: true } } },
   });
 }
 

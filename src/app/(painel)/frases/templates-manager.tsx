@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TemplateEditor } from "@/components/mensagem/template-editor";
 import { MessagePreview } from "@/components/mensagem/message-preview";
-import { PhrasePicker } from "@/components/mensagem/phrase-picker";
+import { PhrasePicker, type PhrasePickerWatch } from "@/components/mensagem/phrase-picker";
 import { buildMessageVars, renderTemplate } from "@/lib/message";
 import { cn } from "@/lib/utils";
 import type { MessageTemplate, Phrase } from "@/generated/prisma";
@@ -36,6 +36,7 @@ import { INITIAL_ACTION_STATE } from "./action-state";
 export interface TemplatesManagerProps {
   templates: MessageTemplate[];
   phrases: Phrase[];
+  watches: PhrasePickerWatch[];
 }
 
 /// Dados fictícios pra o preview ficar realista mesmo sem uma oferta real
@@ -48,7 +49,7 @@ const PREVIEW_SAMPLE = {
   link: "https://exemplo.com/r/abc123",
 };
 
-export function TemplatesManager({ templates, phrases }: TemplatesManagerProps) {
+export function TemplatesManager({ templates, phrases, watches }: TemplatesManagerProps) {
   const [selectedId, setSelectedId] = useState<string | null>(
     templates.find((t) => t.isDefault)?.id ?? templates[0]?.id ?? null,
   );
@@ -166,6 +167,7 @@ export function TemplatesManager({ templates, phrases }: TemplatesManagerProps) 
           key={selected?.id ?? "new"}
           selected={selected}
           phrases={phrases}
+          watches={watches}
           totalTemplates={templates.length}
           actionPending={isPending}
           onDuplicate={handleDuplicate}
@@ -180,6 +182,7 @@ export function TemplatesManager({ templates, phrases }: TemplatesManagerProps) 
 interface TemplateEditorPanelProps {
   selected: MessageTemplate | null;
   phrases: Phrase[];
+  watches: PhrasePickerWatch[];
   totalTemplates: number;
   /// true enquanto duplicar/definir padrão/excluir está em andamento.
   actionPending: boolean;
@@ -191,6 +194,7 @@ interface TemplateEditorPanelProps {
 function TemplateEditorPanel({
   selected,
   phrases,
+  watches,
   totalTemplates,
   actionPending,
   onDuplicate,
@@ -329,7 +333,7 @@ function TemplateEditorPanel({
           <MessagePreview body={previewBody} />
         </Section>
         <Section title="Frase de exemplo" description="Troque a frase usada no preview">
-          <PhrasePicker phrases={phrases} onPick={(p: Phrase) => setPreviewFrase(p.text)} />
+          <PhrasePicker phrases={phrases} watches={watches} onPick={(p: Phrase) => setPreviewFrase(p.text)} />
         </Section>
       </div>
       </div>
