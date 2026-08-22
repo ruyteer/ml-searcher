@@ -18,6 +18,9 @@ async function handle(request: Request): Promise<Response> {
 
   try {
     const result = await runAffiliateCheckCycle();
+    if (result.skipped) {
+      console.info("[cron/affiliate-check]", { skipped: result.skipped, dueInMs: result.schedule.dueInMs });
+    }
     return NextResponse.json(result);
   } catch (err) {
     console.error("[cron/affiliate-check] falha no ciclo de checagem:", err);
