@@ -46,10 +46,6 @@ export const SETTINGS_SCHEMA = {
   /// 401 do Mercado Livre) — mais confiável que só olhar a data de validade,
   /// porque cobre revogação antes do prazo. Zera sozinho ao colar um curl novo.
   affiliateSessionInvalid: { default: false, kind: "boolean" },
-  /// Horário-alvo do próximo ciclo de checagem (ISO). Vazio = checa no próximo tick.
-  /// Avança na grade do agendamento, nunca a partir da hora em que a checagem
-  /// terminou — senão a duração do ciclo empurra o alvo para fora do tick.
-  affiliateCheckNextAt: { default: "", kind: "string" },
 
   /// Credenciais da API do Mercado Livre. Preenchíveis pelo painel ou por env.
   mlClientId: { default: "", kind: "string" },
