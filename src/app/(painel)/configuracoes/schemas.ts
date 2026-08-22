@@ -15,6 +15,8 @@ export const detectionSchema = z
     /// Em reais — convertido para centavos na action antes de chamar setSettings.
     minPrice: z.coerce.number().min(0).max(999_999),
     minSoldQuantity: z.coerce.number().int().min(0).max(1_000_000),
+    /// Mesma faixa do intervalo de envio do WhatsApp (schedule-form.tsx).
+    scrapeIntervalMinutes: z.coerce.number().int().min(5).max(1440),
   })
   .refine((v) => v.hotDiscount >= v.minDiscount, {
     message: "Precisa ser maior ou igual ao desconto mínimo.",

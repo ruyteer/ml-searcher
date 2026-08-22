@@ -31,6 +31,7 @@ interface ConfiguracoesTabsProps {
     minHistoryPoints: number;
     minPrice: number;
     minSoldQuantity: number;
+    scrapeIntervalMinutes: number;
   };
 }
 
