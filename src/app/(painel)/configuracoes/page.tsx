@@ -43,6 +43,7 @@ export default async function ConfiguracoesPage() {
     minHistoryPoints: SETTINGS_SCHEMA.minHistoryPoints.default,
     minPrice: SETTINGS_SCHEMA.minPrice.default,
     minSoldQuantity: SETTINGS_SCHEMA.minSoldQuantity.default,
+    scrapeIntervalMinutes: SETTINGS_SCHEMA.scrapeIntervalMinutes.default,
   };
 
   return (

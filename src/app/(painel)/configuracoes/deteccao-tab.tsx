@@ -29,6 +29,7 @@ interface DeteccaoTabProps {
     minHistoryPoints: number;
     minPrice: number; // centavos
     minSoldQuantity: number;
+    scrapeIntervalMinutes: number;
   };
 }
 
@@ -39,6 +40,7 @@ function valuesFrom(settings: PublicSettings) {
     minHistoryPoints: String(settings.minHistoryPoints),
     minPrice: centsToMasked(settings.minPrice),
     minSoldQuantity: String(settings.minSoldQuantity),
+    scrapeIntervalMinutes: String(settings.scrapeIntervalMinutes),
   };
 }
 
@@ -259,6 +261,26 @@ export function DeteccaoTab({ settings, defaults }: DeteccaoTabProps) {
               value={values.minSoldQuantity}
               onValueChange={set("minSoldQuantity")}
               error={err("minSoldQuantity")}
+            />
+          </FieldWithHelp>
+          <FieldWithHelp
+            label="Intervalo da varredura"
+            help={
+              <div className="flex flex-col gap-1.5">
+                <p>A cada quantos minutos o robô busca ofertas novas no Mercado Livre.</p>
+                <p>Não afeta o que já aparece nas telas, só a cadência da próxima busca.</p>
+              </div>
+            }
+          >
+            <IntegerInput
+              label="Intervalo da varredura (minutos)"
+              defaultText={`Padrão: ${defaults.scrapeIntervalMinutes}`}
+              name="scrapeIntervalMinutes"
+              min={5}
+              max={1440}
+              value={values.scrapeIntervalMinutes}
+              onValueChange={set("scrapeIntervalMinutes")}
+              error={err("scrapeIntervalMinutes")}
             />
           </FieldWithHelp>
         </div>

@@ -66,7 +66,8 @@ export async function updateDetectionSettingsAction(
   const parsed = detectionSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fail("Verifique os campos destacados.", zodErrors(parsed.error));
 
-  const { minDiscount, hotDiscount, minHistoryPoints, minPrice, minSoldQuantity } = parsed.data;
+  const { minDiscount, hotDiscount, minHistoryPoints, minPrice, minSoldQuantity, scrapeIntervalMinutes } =
+    parsed.data;
   const minPriceCents = toCents(minPrice);
 
   await setSettings({
@@ -75,6 +76,7 @@ export async function updateDetectionSettingsAction(
     minHistoryPoints,
     minPrice: minPriceCents,
     minSoldQuantity,
+    scrapeIntervalMinutes,
   });
 
   // As telas de ofertas leem a configuração para decidir o que mostrar, então
